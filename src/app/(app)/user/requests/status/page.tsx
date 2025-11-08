@@ -7,7 +7,7 @@ import {
   RecyledIcon,
   RejectIcon,
 } from "@/components/svgs"
-import TablePagination from "@/components/table-pagination"
+import TablePagination from "@/components/table/pagination"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

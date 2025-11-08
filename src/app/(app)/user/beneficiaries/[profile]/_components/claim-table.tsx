@@ -12,8 +12,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import TablePagination from "@/components/table-pagination"
-import { RowMenu } from "@/components/table-pagination/callout"
+import TablePagination from "@/components/table/pagination"
+import { RowMenu } from "@/components/table/pagination/callout"
 
 interface Claim {
   claimId: string

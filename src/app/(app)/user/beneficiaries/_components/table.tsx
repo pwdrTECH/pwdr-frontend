@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn, slugify } from "@/lib/utils"
-import TablePagination from "@/components/table-pagination"
-import { RowMenu } from "@/components/table-pagination/callout"
+import TablePagination from "@/components/table/pagination"
+import { RowMenu } from "@/components/table/pagination/callout"
 import { useRouter } from "next/navigation"
 
 interface Enrollee {

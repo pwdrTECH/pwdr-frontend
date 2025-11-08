@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 type CustomSheetProps = {
   title?: React.ReactNode
   subtitle?: React.ReactNode
-  trigger: React.ReactElement
+  trigger?: React.ReactElement
   children: React.ReactNode // scroll area
   footer?: React.ReactNode // fixed footer
   contentClassName?: string
@@ -35,7 +35,7 @@ export function CustomSheet({
 }: CustomSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
 
       {/* Ensure overlay is below content but above the page */}
       <SheetOverlay className="z-[150]" />

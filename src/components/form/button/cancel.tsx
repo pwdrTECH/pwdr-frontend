@@ -5,14 +5,21 @@ interface CancelButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>
   text?: string
   disabled?: boolean
+  className?: string
 }
-export function CancelButton({ disabled, onClick, text }: CancelButtonProps) {
+export function CancelButton({
+  disabled,
+  onClick,
+  className,
+  text,
+}: CancelButtonProps) {
   return (
     <Button
       type="button"
       variant="destructive"
       disabled={disabled}
       onClick={onClick}
+      className={className}
     >
       {text}
     </Button>

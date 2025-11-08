@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
-import TablePagination from "@/components/table-pagination"
+import TablePagination from "@/components/table/pagination"
 import ProcessRequest from "./process"
 
 /**

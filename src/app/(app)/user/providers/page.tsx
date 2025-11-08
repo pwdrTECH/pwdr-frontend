@@ -6,6 +6,7 @@ import { Search } from "lucide-react"
 import * as React from "react"
 import AddProvider from "./_components/add"
 import { ProvidersTable } from "./_components/table"
+import { TableTitle } from "@/components/table"
 
 export default function ProvidersPage() {
   const [q, setQ] = React.useState("")
@@ -13,9 +14,9 @@ export default function ProvidersPage() {
   return (
     <Card className="p-0">
       <CardHeader className="pb-0 pt-5 px-6 flex flex-col gap-4 border-b border-[#EEF1F6] sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-[18px]/[28px] tracking-normal font-hnd font-bold text-[#344054]">
+        <TableTitle>
           You have <span className="font-semibold">17</span> partner Providers
-        </CardTitle>
+        </TableTitle>
 
         <div className="flex w-full gap-2 sm:w-auto">
           <div className="relative w-full sm:w-[284px]">

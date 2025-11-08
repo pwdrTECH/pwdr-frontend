@@ -1423,6 +1423,92 @@ export function UploadFile({ className }: IconProps) {
     </svg>
   )
 }
+export function CalendarIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M6.66406 1.66406V4.16406"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.3359 1.66406V4.16406"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.91406 7.57812H17.0807"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17.5 7.08073V14.1641C17.5 16.6641 16.25 18.3307 13.3333 18.3307H6.66667C3.75 18.3307 2.5 16.6641 2.5 14.1641V7.08073C2.5 4.58073 3.75 2.91406 6.66667 2.91406H13.3333C16.25 2.91406 17.5 4.58073 17.5 7.08073Z"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.0762 11.4167H13.0836"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.0762 13.9167H13.0836"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.99803 11.4167H10.0055"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.99803 13.9167H10.0055"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.91209 11.4167H6.91957"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.91209 13.9167H6.91957"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 export function FilterIcon({ className }: IconProps) {
   return (
     <svg
@@ -2017,7 +2103,68 @@ export function VerifiedOutlinedIcon({ className }: IconProps) {
     </svg>
   )
 }
-export function MagicPenIcon() {
+export function SignatureIcon() {
+  return (
+    <svg
+      width="75"
+      height="30"
+      viewBox="0 0 75 30"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M16.9377 18.9515C17.4525 21.5232 17.6712 24.4942 18.7383 26.9069C19.6077 28.8729 20.9516 21.7854 23.8199 22.9092C26.2961 23.8794 26.5502 27.4883 28.7816 28.4661C31.6232 29.7113 30.9662 18.4981 30.8623 17.8321C30.2666 14.0152 28.833 12.1135 24.7803 12.3952C20.5275 12.6908 15.2866 14.2882 11.4159 15.6333C10.123 16.0826 2.02831 18.5548 0.852415 21.3501C-1.83416 27.7366 14.8621 24.8277 21.5792 23.1091C30.7974 20.7506 41.8761 16.1323 50.4687 11.9155C106.716 -15.6884 40.0208 17.1747 59.4316 5.99882"
+        stroke="black"
+        strokeWidth="1.13109"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+export function MagicPenAltIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width="24" height="24" rx="12" fill="#E8F1FC" />
+      <path
+        d="M6.33688 17.6676C6.89021 18.2209 7.78354 18.2209 8.33688 17.6676L17.0035 9.00094C17.5569 8.4476 17.5569 7.55427 17.0035 7.00094C16.4502 6.4476 15.5569 6.4476 15.0035 7.00094L6.33688 15.6676C5.78354 16.2209 5.78354 17.1143 6.33688 17.6676Z"
+        stroke="#2568F5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.0078 9.99219L14.0078 7.99219"
+        stroke="#2568F5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.66406 5.62927L10.6641 5.33594L10.3707 6.33594L10.6641 7.33594L9.66406 7.0426L8.66406 7.33594L8.9574 6.33594L8.66406 5.33594L9.66406 5.62927Z"
+        stroke="#2568F5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 9.62927L8 9.33594L7.70667 10.3359L8 11.3359L7 11.0426L6 11.3359L6.29333 10.3359L6 9.33594L7 9.62927Z"
+        stroke="#2568F5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17 12.9574L18 12.6641L17.7067 13.6641L18 14.6641L17 14.3707L16 14.6641L16.2933 13.6641L16 12.6641L17 12.9574Z"
+        stroke="#2568F5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+export function MagicPenIcon({ className }: IconProps) {
   return (
     <svg
       width="20"
@@ -2025,6 +2172,7 @@ export function MagicPenIcon() {
       viewBox="0 0 20 20"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      className={className}
     >
       <path
         d="M4.1651 18.226C3.54844 18.226 2.9401 17.9927 2.47344 17.526C2.02344 17.076 1.77344 16.476 1.77344 15.8344C1.77344 15.1927 2.02344 14.5927 2.47344 14.1427L13.3068 3.30938C14.2401 2.37604 15.7568 2.37604 16.6901 3.30938C17.1401 3.75938 17.3901 4.35938 17.3901 5.00104C17.3901 5.64271 17.1401 6.24271 16.6901 6.69271L5.85677 17.526C5.3901 17.9927 4.78177 18.226 4.1651 18.226ZM14.9984 3.85938C14.7068 3.85938 14.4151 3.96771 14.1901 4.19271L3.35677 15.026C3.1401 15.2427 3.02344 15.526 3.02344 15.8344C3.02344 16.1427 3.1401 16.426 3.35677 16.6427C3.79844 17.0844 4.53177 17.0844 4.97344 16.6427L15.8068 5.80937C16.0234 5.59271 16.1401 5.30938 16.1401 5.00104C16.1401 4.69271 16.0234 4.40938 15.8068 4.19271C15.5818 3.96771 15.2901 3.85938 14.9984 3.85938Z"
