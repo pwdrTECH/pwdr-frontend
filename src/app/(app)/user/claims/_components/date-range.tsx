@@ -55,7 +55,7 @@ export default function DateRangePicker({
         <Button
           variant="outline"
           size="sm"
-          className="w-fit gap-2 h-10  text-sm rounded-[12px] py-2.5 px-2 text-[#667085] bg-[#F8F8F8] shadow-[0px_1px_2px_0px_#1018280D] border-[#0000000F] hover:bg-transparent hover:text-[#667085]"
+          className="w-fit gap-2 h-10 font-normal  text-sm rounded-[12px] py-2.5 px-2 text-[#667085] bg-[#F8F8F8] shadow-[0px_1px_2px_0px_#1018280D] border-[#0000000F] hover:bg-transparent hover:text-[#667085]"
         >
           {displayText}
           <CalendarIcon />
