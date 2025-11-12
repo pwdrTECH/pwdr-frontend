@@ -42,7 +42,7 @@ const enrolleeSchema = z.object({
 
   // Contact Details
   mobile: z.string().min(7, "Mobile number is required"),
-  email: z.string().email("Valid email is required"),
+  email: z.email("Valid email is required"),
 
   // Enrollee Plan & Scheme
   scheme: z.string().min(1, "Scheme is required"),

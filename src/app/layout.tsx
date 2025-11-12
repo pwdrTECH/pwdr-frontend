@@ -1,3 +1,4 @@
+import { AppProviders } from "@/components/providers/AppProviders"
 import type { Metadata } from "next"
 import localFont from "next/font/local"
 import "./globals.css"
@@ -53,7 +54,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${hnd.variable} antialiased`}>{children}</body>
+      <body className={`${hnd.variable} antialiased`}>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   )
 }

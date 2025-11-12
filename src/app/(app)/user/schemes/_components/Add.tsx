@@ -19,12 +19,14 @@ import { Minus, Plus, X } from "lucide-react"
 import * as React from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { useSchemes } from "@/lib/api/schemes"
 
 const planFormSchema = z.object({
   planName: z
     .string()
     .min(1, "Plan name is required")
     .min(3, "Plan name must be at least 3 characters"),
+  // we’ll store selected scheme IDs as strings
   schemes: z.array(z.string()).min(1, "At least one scheme must be selected"),
   premium: z
     .string()
@@ -80,17 +82,9 @@ const planFormSchema = z.object({
 
 type PlanFormData = z.infer<typeof planFormSchema>
 
-const ALL_SCHEMES = ["NHIS", "PHIS", "TSHIP", "NYSC"]
-
 export default function AddPlanForm() {
   const [open, setOpen] = React.useState(false)
-  const [selectedSchemes, setSelectedSchemes] = React.useState<string[]>([
-    "NHIS",
-    "PHIS",
-    "TSHIP",
-    "NYSC",
-  ])
-  const [schemeSelector, setSchemeSelector] = React.useState<string>("")
+  const [schemeSelector, setSchemeSelector] = React.useState("")
   const [serviceItems, setServiceItems] = React.useState<
     Array<{
       id: string
@@ -101,43 +95,68 @@ export default function AddPlanForm() {
     }>
   >([{ id: "1", name: "", cost: "", utilizationLimit: "", frequencyLimit: "" }])
 
+  const { data: schemes, isLoading: schemesLoading } = useSchemes()
+
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planFormSchema),
     defaultValues: {
       planName: "",
-      schemes: selectedSchemes,
+      schemes: [],
       premium: "",
       threshold: "",
       daysToActivate: "",
-      serviceItems: serviceItems,
+      serviceItems,
     },
   })
 
-  const handleSchemeSelect = (scheme: string) => {
-    if (!selectedSchemes.includes(scheme)) {
-      const newSchemes = [...selectedSchemes, scheme]
-      setSelectedSchemes(newSchemes)
-      form.setValue("schemes", newSchemes)
+  // Build select options from API
+  const schemeOptions: SelectOption[] = React.useMemo(
+    () =>
+      (schemes ?? []).map((s) => ({
+        value: String(s.id), // store ID
+        label: s.name,
+      })),
+    [schemes]
+  )
+
+  const selectedSchemeIds = form.watch("schemes") || []
+
+  const handleSchemeSelect = (schemeId: string) => {
+    if (!schemeId) return
+    if (!selectedSchemeIds.includes(schemeId)) {
+      const next = [...selectedSchemeIds, schemeId]
+      form.setValue("schemes", next, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
     }
     setSchemeSelector("")
   }
 
-  const removeScheme = (scheme: string) => {
-    const newSchemes = selectedSchemes.filter((s) => s !== scheme)
-    setSelectedSchemes(newSchemes)
-    form.setValue("schemes", newSchemes)
+  const removeScheme = (schemeId: string) => {
+    const next = selectedSchemeIds.filter((id) => id !== schemeId)
+    form.setValue("schemes", next, { shouldDirty: true, shouldValidate: true })
   }
+
+  const getSchemeLabel = (schemeId: string) =>
+    schemeOptions.find((o) => o.value === schemeId)?.label ?? schemeId
 
   const removeServiceItem = (id: string) => {
     const newItems = serviceItems.filter((item) => item.id !== id)
     setServiceItems(newItems)
-    form.setValue("serviceItems", newItems)
+    form.setValue("serviceItems", newItems, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
   }
 
   const addServiceItem = () => {
-    const newId = String(
-      Math.max(...serviceItems.map((item) => Number.parseInt(item.id)), 0) + 1
+    const maxId = serviceItems.reduce(
+      (max, item) => Math.max(max, Number.parseInt(item.id) || 0),
+      0
     )
+    const newId = String(maxId + 1)
+
     const newItems = [
       ...serviceItems,
       {
@@ -149,18 +168,23 @@ export default function AddPlanForm() {
       },
     ]
     setServiceItems(newItems)
-    form.setValue("serviceItems", newItems)
+    form.setValue("serviceItems", newItems, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
   }
 
   const onSubmit = (data: PlanFormData) => {
-    console.log("[v0] Form submitted with data:", data)
+    // Here you can call your create-plan mutation:
+    // - data.schemes is an array of scheme IDs (string[]
+    // - map to payload your backend expects
+    console.log("[plan] submit payload:", data)
     alert("Plan added successfully! Check console for data.")
+    // Optionally close + reset
+    // setOpen(false)
+    // form.reset()
+    // setServiceItems([{ id: "1", name: "", cost: "", utilizationLimit: "", frequencyLimit: "" }])
   }
-
-  const schemeOptions: SelectOption[] = ALL_SCHEMES.map((scheme) => ({
-    value: scheme,
-    label: scheme,
-  }))
 
   return (
     <CustomSheet
@@ -178,6 +202,15 @@ export default function AddPlanForm() {
             trigger={<CancelButton text="Cancel" />}
             onConfirm={() => {
               form.reset()
+              setServiceItems([
+                {
+                  id: "1",
+                  name: "",
+                  cost: "",
+                  utilizationLimit: "",
+                  frequencyLimit: "",
+                },
+              ])
               setOpen(false)
             }}
             description={
@@ -206,7 +239,7 @@ export default function AddPlanForm() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="w-full sm:w-[427px] flex flex-col gap-8"
         >
-          {/* Plan Details Section */}
+          {/* Plan Details */}
           <div className="flex flex-col gap-0.5 font-hnd tracking-normal">
             <h2 className="text-[#101828] font-bold text-[18px]/[28px]">
               Plan Details
@@ -215,20 +248,35 @@ export default function AddPlanForm() {
               Enter plan basic details
             </p>
           </div>
+
           <TextField
             control={form.control}
             name="planName"
             label="Plan Name"
             placeholder="Enter plan name"
           />
+
+          {/* Schemes selector (from API) */}
           <div className="space-y-2">
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-gray-900">
                 Scheme
               </label>
-              <Select value={schemeSelector} onValueChange={handleSchemeSelect}>
+              <Select
+                value={schemeSelector}
+                onValueChange={handleSchemeSelect}
+                disabled={schemesLoading || !schemeOptions.length}
+              >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Schemes this plan applies to" />
+                  <SelectValue
+                    placeholder={
+                      schemesLoading
+                        ? "Loading schemes..."
+                        : schemeOptions.length
+                        ? "Select schemes this plan applies to"
+                        : "No schemes available"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -245,22 +293,22 @@ export default function AddPlanForm() {
               </Select>
             </div>
 
-            {/* Selected Scheme Tags */}
-            {selectedSchemes.length > 0 && (
+            {/* Selected Scheme Tags (IDs -> labels) */}
+            {selectedSchemeIds.length > 0 && (
               <div className="w-full flex flex-wrap gap-4">
-                {selectedSchemes.map((scheme) => (
+                {selectedSchemeIds.map((id) => (
                   <div
-                    key={scheme}
+                    key={id}
                     className="inline-flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded-md"
                   >
                     <span className="text-xs font-medium text-gray-700">
-                      {scheme}
+                      {getSchemeLabel(id)}
                     </span>
                     <button
                       type="button"
-                      onClick={() => removeScheme(scheme)}
+                      onClick={() => removeScheme(id)}
                       className="text-[#98A2B3] hover:text-[#98A2B3]/90 transition-colors cursor-pointer"
-                      aria-label={`Remove ${scheme}`}
+                      aria-label={`Remove scheme ${getSchemeLabel(id)}`}
                     >
                       <X size={16} />
                     </button>
@@ -270,6 +318,7 @@ export default function AddPlanForm() {
             )}
           </div>
 
+          {/* Premium / Threshold / Days */}
           <TextField
             control={form.control}
             name="premium"
@@ -279,7 +328,6 @@ export default function AddPlanForm() {
             step="0.01"
             rightAdornment={<NairaIcon />}
           />
-
           <TextField
             control={form.control}
             name="threshold"
@@ -289,16 +337,15 @@ export default function AddPlanForm() {
             step="0.01"
             rightAdornment={<NairaIcon />}
           />
-
           <TextField
             control={form.control}
             name="daysToActivate"
             label="Days to Activate"
-            placeholder="eg. 7 Days"
+            placeholder="e.g. 7"
             type="number"
           />
 
-          {/* Service Items Section */}
+          {/* Service Items */}
           <div className="flex flex-col gap-0.5 font-hnd tracking-normal">
             <h2 className="text-[#101828] font-bold text-[18px]/[28px]">
               Service Items
@@ -312,7 +359,7 @@ export default function AddPlanForm() {
             {serviceItems.map((item, index) => (
               <div key={item.id} className="flex flex-col gap-4">
                 <div className="flex items-center justify-between w-full">
-                  <label className="font-hnd text-[18px]/[28px] font-bold  text-[#101828] tracking-normal">
+                  <label className="font-hnd text-[18px]/[28px] font-bold text-[#101828]">
                     Service {index + 1}
                   </label>
                   {serviceItems.length > 1 && (
@@ -320,7 +367,7 @@ export default function AddPlanForm() {
                       <button
                         type="button"
                         onClick={() => removeServiceItem(item.id)}
-                        className="w-6 h-6 border-[1.5px] border-[#98A2B3] rounded-xl  text-[#98A2B3] hover:text-gray-600 transition-colors flex items-center justify-center cursor-pointer"
+                        className="w-6 h-6 border-[1.5px] border-[#98A2B3] rounded-xl text-[#98A2B3] hover:text-gray-600 transition-colors flex items-center justify-center cursor-pointer"
                         aria-label={`Remove service ${index + 1}`}
                       >
                         <Minus size={20} />
@@ -372,16 +419,16 @@ export default function AddPlanForm() {
               </div>
             ))}
           </div>
+
           <button
             type="button"
-            className="h-10 w-full flex items-center justify-between mt-6 cursor-pointer  text-[#475467] "
+            className="h-10 w-full flex items-center justify-between mt-6 cursor-pointer text-[#475467]"
             onClick={addServiceItem}
             aria-label="Add service"
           >
             <span className="font-hnd text-[18px] font-bold tracking-normal">
               Add New Service
             </span>
-
             <Plus size={30} />
           </button>
         </form>
