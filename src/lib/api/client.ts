@@ -31,7 +31,6 @@ export class ApiError extends Error {
 
 interface RequestConfig extends RequestInit {
   timeout?: number
-  credentials?: RequestCredentials
 }
 
 class ApiClient {
@@ -60,12 +59,12 @@ class ApiClient {
     })
   }
 
-  // Core request
+  // Update the request method to include credentials
   private async request<T>(
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
-    const { timeout = 10000, headers, credentials, ...rest } = config
+    const { timeout = 10000, headers, ...rest } = config
     const url = `${this.baseUrl}${endpoint}`
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -74,7 +73,6 @@ class ApiClient {
       const isFormData =
         typeof FormData !== "undefined" && rest.body instanceof FormData
 
-      // Merge headers & avoid setting Content-Type for multipart
       const merged: Record<string, string> = {
         ...this.defaultHeaders,
         ...(headers as Record<string, string> | undefined),
@@ -84,13 +82,13 @@ class ApiClient {
       const res = await fetch(url, {
         signal: controller.signal,
         headers: merged,
-        credentials: credentials ?? "include",
         ...rest,
       })
+
       clearTimeout(timeoutId)
 
       const text = await res.text()
-      let data: any = text
+      const data: any = text
         ? (() => {
             try {
               return JSON.parse(text)
@@ -99,7 +97,6 @@ class ApiClient {
             }
           })()
         : {}
-
       if (!res.ok) {
         throw new ApiError(
           data?.message || data?.detail || `HTTP ${res.status}`,
@@ -109,7 +106,7 @@ class ApiClient {
       }
 
       return {
-        data: (data?.data ?? data) as T,
+        data: data as T,
         message: data?.message,
         status: res.status,
       }

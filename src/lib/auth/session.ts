@@ -20,8 +20,8 @@ export type PowderUser = {
 }
 
 export type LoginSession = {
-  access_token: string
-  user: PowderUser
+  access_token: string | undefined
+  user: PowderUser | undefined
 }
 
 /** Save token + user, sync apiClient */
@@ -37,14 +37,25 @@ export async function establishSession(payload: {
   if (access) {
     apiClient.setAuthToken(access)
     localStorage.setItem(AT_KEY, access)
+
+    // Set HTTP-only cookies for middleware
+    await fetch("/api/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        access_token: access,
+        role: role,
+        user_type: payload.data.user_type,
+      }),
+    })
   } else {
     apiClient.removeAuthToken()
     localStorage.removeItem(AT_KEY)
   }
 
   localStorage.setItem(ROLE_KEY, role)
-
-  // cookie bridge, do it here
 }
 
 /** Clear all auth */
@@ -62,13 +73,28 @@ export function rehydrateSessionFromStorage() {
   if (t) apiClient.setAuthToken(t)
 }
 
+/** Get token from localStorage */
+export function getToken(): string | null {
+  if (!hasWindow()) return null
+  return localStorage.getItem(AT_KEY)
+}
+
 /** Read helpers */
-export function getSession(): { access_token: string; role: string } | null {
+export function getSession(): {
+  access_token: string
+  role: string
+  user?: PowderUser
+} | null {
   if (!hasWindow()) return null
   const access_token = localStorage.getItem(AT_KEY)
   if (!access_token) return null
   const role = localStorage.getItem(ROLE_KEY) || "user"
-  return { access_token, role }
+
+  // Try to get user data from localStorage if available
+  const userData = localStorage.getItem("powder_user")
+  const user = userData ? JSON.parse(userData) : undefined
+
+  return { access_token, role, user }
 }
 
 export function isAuthenticated() {
@@ -96,4 +122,21 @@ export function consumeReturnTo(defaultUrl = "/user") {
   const v = localStorage.getItem(RT_KEY)
   if (v) localStorage.removeItem(RT_KEY)
   return v || defaultUrl
+}
+
+// Store user data separately for easy access
+export function storeUserData(user: PowderUser) {
+  if (!hasWindow()) return
+  localStorage.setItem("powder_user", JSON.stringify(user))
+}
+
+export function getUserData(): PowderUser | null {
+  if (!hasWindow()) return null
+  const userData = localStorage.getItem("powder_user")
+  return userData ? JSON.parse(userData) : null
+}
+
+// Initialize on import
+if (hasWindow()) {
+  rehydrateSessionFromStorage()
 }

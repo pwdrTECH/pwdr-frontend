@@ -1,8 +1,6 @@
-"use client"
-
-import { Suspense } from "react"
-import LoginForm from "./_components/form"
-import { RightHeroSlider } from "./_components/slider"
+import { Suspense } from "react";
+import LoginForm from "./_components/form";
+import { RightHeroSlider } from "./_components/slider";
 
 export default function LoginPage() {
   return (
@@ -14,5 +12,5 @@ export default function LoginPage() {
         <RightHeroSlider />
       </div>
     </main>
-  )
+  );
 }

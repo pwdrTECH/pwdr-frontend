@@ -1,14 +1,12 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
 import {
   FormControl,
   FormDescription,
   FormField,
   FormItem,
   FormMessage,
-} from "@/components/ui/form"
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -16,43 +14,45 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { Control, FieldPath, FieldValues } from "react-hook-form"
-import Label from "./label"
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import type { Control, FieldPath, FieldValues } from "react-hook-form";
+import Label from "./label";
+import type { ReactNode } from "react";
 
 export type SelectOption = {
-  value: string
-  label: React.ReactNode
-  disabled?: boolean
-}
+  value: string | number;
+  label: ReactNode;
+  disabled?: boolean;
+};
 
 type BaseProps<TFieldValues extends FieldValues> = {
-  control: Control<TFieldValues>
-  name: FieldPath<TFieldValues>
+  control: Control<TFieldValues>;
+  name: FieldPath<TFieldValues>;
 
-  label?: React.ReactNode
-  hideLabel?: boolean
-  description?: React.ReactNode
+  label?: ReactNode;
+  hideLabel?: boolean;
+  description?: ReactNode;
 
-  placeholder?: string
-  options: ReadonlyArray<SelectOption>
+  placeholder?: string;
+  options: ReadonlyArray<SelectOption>;
 
-  className?: string
-  triggerClassName?: string
-  contentClassName?: string
+  className?: string;
+  triggerClassName?: string;
+  contentClassName?: string;
 
-  disabled?: boolean
-  id?: string
-  triggerAriaLabel?: string
+  disabled?: boolean;
+  id?: string;
+  triggerAriaLabel?: string;
 
-  leftAdornment?: React.ReactNode
-  rightAdornment?: React.ReactNode
-  startAdornment?: React.ReactNode
-  endAdornment?: React.ReactNode
-  adornmentClassName?: string
+  leftAdornment?: ReactNode;
+  rightAdornment?: ReactNode;
+  startAdornment?: ReactNode;
+  endAdornment?: ReactNode;
+  adornmentClassName?: string;
 
-  onValueChange?: (value: string) => void
-}
+  onValueChange?: (value: string) => void;
+};
 
 export function SelectField<TFieldValues extends FieldValues>({
   control,
@@ -75,19 +75,19 @@ export function SelectField<TFieldValues extends FieldValues>({
   adornmentClassName,
   onValueChange,
 }: BaseProps<TFieldValues>) {
-  const left = leftAdornment ?? startAdornment
-  const right = rightAdornment ?? endAdornment
-  const hasLeft = !!left
-  const hasRight = !!right
-  const inputId = id ?? String(name)
+  const left = leftAdornment ?? startAdornment;
+  const right = rightAdornment ?? endAdornment;
+  const hasLeft = !!left;
+  const hasRight = !!right;
+  const inputId = id ?? String(name);
 
   return (
     <FormField
       control={control}
       name={name}
       render={({ field, fieldState }) => {
-        const hasError = !!fieldState.error
-        const triggerId = id ?? String(name)
+        const hasError = !!fieldState.error;
+        const triggerId = id ?? String(name);
 
         return (
           <FormItem className={cn("flex flex-col gap-2", className)}>
@@ -103,8 +103,8 @@ export function SelectField<TFieldValues extends FieldValues>({
                 disabled={disabled}
                 value={field.value ?? undefined}
                 onValueChange={(v) => {
-                  field.onChange(v)
-                  onValueChange?.(v)
+                  field.onChange(v);
+                  onValueChange?.(v);
                 }}
               >
                 <SelectTrigger
@@ -112,8 +112,8 @@ export function SelectField<TFieldValues extends FieldValues>({
                   aria-invalid={hasError || undefined}
                   aria-label={
                     hideLabel
-                      ? triggerAriaLabel ??
-                        (typeof label === "string" ? label : "Select")
+                      ? (triggerAriaLabel ??
+                        (typeof label === "string" ? label : "Select"))
                       : undefined
                   }
                   className={cn(
@@ -123,14 +123,14 @@ export function SelectField<TFieldValues extends FieldValues>({
                     "[&>svg]:absolute [&>svg]:right-3 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2",
                     hasError &&
                       "border-destructive focus-visible:ring-destructive",
-                    triggerClassName
+                    triggerClassName,
                   )}
                 >
                   {hasLeft && (
                     <span
                       className={cn(
                         "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2",
-                        adornmentClassName
+                        adornmentClassName,
                       )}
                     >
                       {left}
@@ -143,7 +143,7 @@ export function SelectField<TFieldValues extends FieldValues>({
                     <span
                       className={cn(
                         "pointer-events-none absolute right-8 top-1/2 -translate-y-1/2",
-                        adornmentClassName
+                        adornmentClassName,
                       )}
                     >
                       {right}
@@ -157,7 +157,7 @@ export function SelectField<TFieldValues extends FieldValues>({
                   sideOffset={6}
                   className={cn(
                     "z-[240] max-h-72 overflow-y-auto text-[14px]",
-                    contentClassName
+                    contentClassName,
                   )}
                 >
                   <SelectGroup>
@@ -183,8 +183,8 @@ export function SelectField<TFieldValues extends FieldValues>({
             )}
             <FormMessage />
           </FormItem>
-        )
+        );
       }}
     />
-  )
+  );
 }

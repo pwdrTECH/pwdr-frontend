@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { SubmitButton } from "@/components/form/button"
-import MailIcon from "@/components/svgs"
-import { AppLogo } from "@/components/svgs/logo"
+import { SubmitButton } from "@/components/form/button";
+import MailIcon from "@/components/svgs";
+import { AppLogo } from "@/components/svgs/logo";
 import {
   Form,
   FormControl,
@@ -10,15 +10,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { useLogin } from "@/lib/auth/hooks"
-import { consumeReturnTo } from "@/lib/auth/session"
-import { zodResolver } from "@hookform/resolvers/zod"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useLogin } from "@/lib/auth/hooks";
+import { consumeReturnTo } from "@/lib/auth/session";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 // --------------------
 //  SCHEMA + TYPES
@@ -26,35 +26,34 @@ import { z } from "zod"
 const loginSchema = z.object({
   email: z.email("Please enter a valid email"),
   password: z.string().min(4, "Password required"),
-})
+});
 
-type LoginValues = z.infer<typeof loginSchema>
+type LoginValues = z.infer<typeof loginSchema>;
 
 // --------------------
 //  COMPONENT
 // --------------------
 export default function LoginForm() {
-  const router = useRouter()
-  const sp = useSearchParams()
-  const nextUrl = sp.get("next") || "/user"
-  const { mutateAsync: login, isPending, error } = useLogin()
+  const router = useRouter();
+  const sp = useSearchParams();
+  const nextUrl = sp.get("next") || "/user";
+  const { mutateAsync: login, isPending, error } = useLogin();
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
-  })
+  });
 
   const onSubmit = async (values: LoginValues) => {
     try {
-      const res = await login(values)
-      console.log("res", res)
+      const res = await login(values);
       if (res) {
-        router.replace(consumeReturnTo(nextUrl))
+        router.replace(consumeReturnTo(nextUrl));
       }
     } catch (err) {
-      console.error("Login failed:", err)
+      console.error("Login failed:", err);
     }
-  }
+  };
 
   return (
     <div className="w-full h-full relative order-2 px-4 py-10 sm:px-8 md:order-1 md:flex md:flex-col md:justify-center">
@@ -142,5 +141,5 @@ export default function LoginForm() {
         </div>
       </div>
     </div>
-  )
+  );
 }
