@@ -41,7 +41,6 @@ export interface ClaimListItem {
   enrolee_phone: string | null
   enrolee_email: string | null
   plan_name: string | null
-  // extra fields if backend adds more
   [key: string]: any
 }
 

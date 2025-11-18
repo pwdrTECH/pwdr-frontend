@@ -4,6 +4,63 @@ import { apiClient } from "@/lib/api/client"
 import type { EnrolleeApiResponse } from "@/lib/api/types"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+export interface BeneficiaryFilters {
+  page?: number
+  limit?: number
+  search?: string
+  // add more later: plan_id, state, etc.
+}
+export interface BeneficiaryFilters {
+  page?: number
+  limit?: number
+  search?: string
+}
+
+export interface RawBeneficiary {
+  id: number
+  email: string | null
+  first_name: string | null
+  surname: string | null
+  other_names: string | null
+  gender: string | null
+  dob: string | null
+  address: string | null
+  city: string | null
+  state: number | null
+  phone: string | null
+  marital_status: string | null
+  origin_state: number | null
+  origin_lga: number | null
+  employment_status: string | null
+  occupation: string | null
+  active: number
+  date_created: number
+  enrolee_id: string | null
+  user_role: string | null
+  principal_id: number | null
+  hmo_id: number
+  plan_id: number
+  next_of_kin: string | null
+  next_of_kin_relationship: string | null
+  next_of_kin_phone: string | null
+  next_of_kin_address: string | null
+  plan_name: string | null
+  state_name: string | null
+}
+
+export interface BeneficiariesResponse {
+  status: string
+  data?: RawBeneficiary[]
+  pagination?: {
+    current_page: number
+    per_page: number
+    total: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
+  }
+}
+
 export interface CreateEnrolleePayload {
   email: string
   first_name: string
@@ -38,13 +95,10 @@ export function useCreateEnrollee() {
       payload: CreateEnrolleePayload
     ): Promise<EnrolleeApiResponse> => {
       const formData = new FormData()
-      // Add all other fields
       Object.entries(payload).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          // For file uploads, we might need special handling
           if (key === "passport_image" && value) {
-            // Convert base64 to blob for file upload
-            const base64Data = value.split(",")[1] // Remove data URL prefix if present
+            const base64Data = value.split(",")[1]
             const byteCharacters = atob(base64Data)
             const byteArrays = []
 
@@ -72,7 +126,6 @@ export function useCreateEnrollee() {
         }
       })
 
-      // Use the upload method which sends FormData
       const response = await apiClient.upload<EnrolleeApiResponse>(
         "/new-enrolee.php",
         formData
@@ -92,13 +145,23 @@ export function useCreateEnrollee() {
   })
 }
 
-export function useBeneficiaries(filters?: any) {
+export function useBeneficiaries(filters: BeneficiaryFilters = {}) {
   return useQuery({
     queryKey: ["beneficiaries", filters],
-    queryFn: () =>
-      apiClient.get("/beneficiaries", {
-        method: "POST",
-        body: JSON.stringify(filters || {}),
-      }),
+    queryFn: async () => {
+      // For now: fetch *many* and let UI paginate on client
+      const body = {
+        page: filters.page ?? 1,
+        limit: filters.limit ?? 500, // big enough to cover all
+        search: filters.search ?? "",
+      }
+
+      const res = await apiClient.post<BeneficiariesResponse>(
+        "/fetch-enrolees.php",
+        body
+      )
+
+      return res.data
+    },
   })
 }
