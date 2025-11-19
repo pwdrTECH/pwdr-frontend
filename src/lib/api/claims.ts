@@ -1,10 +1,7 @@
 "use client"
 
-import { getSession } from "@/lib/auth/session"
 import { useQuery } from "@tanstack/react-query"
 import apiClient from "./client"
-
-/* ------------------ Types ------------------ */
 
 export interface ClaimFilters {
   page?: number
@@ -67,10 +64,7 @@ export function useClaims(filters: ClaimFilters = {}) {
   return useQuery({
     queryKey: ["claims", filters],
     queryFn: async (): Promise<ClaimsApiResponse> => {
-      const token = getSession()?.access_token
-
       const body = {
-        ...(token ? { token } : {}),
         page: filters.page ?? 1,
         limit: filters.limit ?? 20,
         search: filters.search ?? "",
@@ -86,12 +80,33 @@ export function useClaims(filters: ClaimFilters = {}) {
       )
 
       const payload = res.data
+      console.log(payload)
 
-      if (!payload || payload.status !== "success") {
-        throw new Error(payload?.message || "Failed to fetch claims")
+      if (!payload) {
+        throw new Error("Failed to fetch claims")
       }
-
-      return payload
+      if (payload.status === "success") {
+        return {
+          ...payload,
+          data: Array.isArray(payload.data) ? payload.data : [],
+        }
+      }
+      if (payload.status === "empty") {
+        return {
+          ...payload,
+          status: "success",
+          data: [],
+          pagination: payload.pagination ?? {
+            current_page: body.page,
+            per_page: body.limit,
+            total: 0,
+            total_pages: 0,
+            has_next: false,
+            has_prev: false,
+          },
+        }
+      }
+      throw new Error(payload.message || "Failed to fetch claims")
     },
   })
 }

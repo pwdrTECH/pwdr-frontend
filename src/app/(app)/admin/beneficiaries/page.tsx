@@ -1,11 +1,14 @@
 "use client";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import Loader from "@/components/loader/lottie/loader";
+import { TableTitle } from "@/components/table";
+import { Card, CardHeader } from "@/components/ui/card";
+import { useBeneficiaries } from "@/lib/api/beneficiaries";
 import * as React from "react";
+import { EmptyState } from "../_components/EmptyState";
 import { AddEnrolleeForm } from "./_components/add";
 import Filters from "./_components/filters";
 import EnrolleesTable from "./_components/table";
-import { useBeneficiaries } from "@/lib/api/beneficiaries";
 
 type StatusValue = "active" | "pending" | "suspended" | "inactive";
 
@@ -43,6 +46,7 @@ export default function BeneficiariesPage() {
   // === 1) Fetch beneficiaries from backend ===
   const { data, isLoading, isError, error } = useBeneficiaries(queryFilters);
 
+  console.log("Beneficiaries data:", data);
   // === 2) Map API payload -> UI-friendly rows ===
   const beneficiaries: EnrolleeRow[] = React.useMemo(() => {
     if (!data) return [];
@@ -166,6 +170,8 @@ export default function BeneficiariesPage() {
     });
   }, [beneficiaries, search, filters.plans, filters.statuses]);
 
+  const hasAny = filtered?.length > 0;
+
   // Total count: prefer server pagination total if available
   const totalCount: number = React.useMemo(() => {
     if (data?.pagination?.total != null) {
@@ -177,19 +183,11 @@ export default function BeneficiariesPage() {
   return (
     <Card className="p-0">
       <CardHeader className="pb-0 pt-5 px-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-[18px]/[28px] tracking-normal font-hnd font-bold text-[#344054]">
-          {isLoading ? (
-            <>Loading enrollees…</>
-          ) : (
-            <>
-              You have{" "}
-              <span className="font-semibold">
-                {totalCount.toLocaleString()}
-              </span>{" "}
-              Enrollees
-            </>
-          )}
-        </CardTitle>
+        {hasAny && (
+          <TableTitle>
+            You have {totalCount.toLocaleString() || 0} Enrollees
+          </TableTitle>
+        )}
 
         <div className="flex items-center gap-4">
           <Filters
@@ -204,21 +202,24 @@ export default function BeneficiariesPage() {
           <AddEnrolleeForm />
         </div>
       </CardHeader>
-
-      {/* Error / Empty / Table */}
-      {isError ? (
-        <div className="px-6 py-8 text-sm text-red-500">
-          Failed to load enrollees:{" "}
-          {error instanceof Error ? error.message : "Unknown error"}
+      {isLoading ? (
+        <Loader message="Loading your enrollees. Please wait..." />
+      ) : !hasAny ? (
+        <div className="py-12">
+          <EmptyState message="No claim data available" />
         </div>
-      ) : (
-        <EnrolleesTable
-          enrollees={filtered}
-          isLoading={isLoading}
-          // if your table accepts these extra props, otherwise
-          // just pass `enrollees={filtered}`
-        />
-      )}
+      ) : error ? (
+        <div className="py-12">
+          <span className="px-6 py-8 text-sm text-red-500">
+            Failed to load enrollees:{" "}
+            {error instanceof Error ? error?.message : "Unknown error"}
+          </span>
+        </div>
+      ) : hasAny ? (
+        <span>
+          <EnrolleesTable enrollees={filtered} />
+        </span>
+      ) : null}
     </Card>
   );
 }

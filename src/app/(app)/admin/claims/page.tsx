@@ -251,13 +251,15 @@ export default function ClaimsPage() {
   const paginated = filteredClaims;
   const controlsId = "claims-table-body";
   const hasAny = paginated.length > 0;
-
+  console.log({ isLoading, isError, hasAny }, error);
   return (
     <div className="w-full rounded-[12px] border border-[#EAECF0]">
       {/* Header + Filters */}
       <div className="border-b-2 border-[#EAECF0] flex flex-col gap-4 pb-4">
         <div className="flex items-center justify-between gap-4 pt-5 px-6">
-          <TableTitle>{totalItems.toLocaleString()} Claims</TableTitle>
+          {hasAny && (
+            <TableTitle>{totalItems.toLocaleString()} Claims</TableTitle>
+          )}{" "}
           <ClaimFilters
             search={searchTerm}
             onSearchChange={(v) => {
@@ -341,27 +343,20 @@ export default function ClaimsPage() {
       </div>
 
       {/* Content area – mirror SchemesPage empty state behaviour */}
-      {isLoading && <Loader message="Loading your claims. Please wait..." />}
-
-      {isError && !isLoading && (
-        <div className="py-12">
-          <EmptyState
-            message={
-              error instanceof Error
-                ? `Failed to load claims: ${error.message}`
-                : "Failed to load claims"
-            }
-          />
-        </div>
-      )}
-
-      {!isLoading && !isError && !hasAny && (
-        <div className="py-12">
+      {isLoading ? (
+        <Loader message="Loading your claims. Please wait..." />
+      ) : isError ? (
+        <p className="w-full flex flex-col justify-center items-center py-10">
+          <span className="px-6 py-8 text-sm text-red-500">
+            Failed to load enrollees:{" "}
+            {error instanceof Error ? error?.message : "Unknown error"}
+          </span>
+        </p>
+      ) : !hasAny ? (
+        <div className="w-full flex flex-col justify-center items-center py-10">
           <EmptyState message="No claim data available" />
         </div>
-      )}
-
-      {!isLoading && !isError && hasAny && (
+      ) : hasAny ? (
         <>
           {/* Table */}
           <div className="overflow-x-auto">
@@ -438,7 +433,7 @@ export default function ClaimsPage() {
             controlsId={controlsId}
           />
         </>
-      )}
+      ) : null}
 
       {/* Detail Sheet */}
       {selectedClaim && (
