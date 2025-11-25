@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { BillingRow } from "../page";
+import { SignatureIcon } from "@/components/svgs";
 
 const formatNaira = (v: number) =>
   `₦${v.toLocaleString("en-NG", {
@@ -292,20 +293,40 @@ export function BillDetailSheet({
           </div>
         </div>
 
-        <div className="grid gap-6 text-sm text-[#111827] sm:grid-cols-2">
-          <div>
-            <div className="mb-1 font-semibold">Pay to:</div>
-            <div>1234567890</div>
-            <div>Zenith Bank Plc</div>
-            <div>Hospital XYZ</div>
-            <div className="mt-4">Thank you!</div>
+        <div className="flex justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-[12px]/[15.84px] text-[#1A1C21] font-medium tracking-normal mb-3">
+              Pay to:
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal">
+              1234567890
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal">
+              Zenith Bank Plc
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal">
+              Hospital XYZ
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal mt-8">
+              Thank you!
+            </p>
           </div>
           <div className="sm:text-right">
-            <div className="mb-1 font-semibold">Approved by:</div>
-            <div>John Doe</div>
-            <div>HMO Manager</div>
-            <div>12 December 2024</div>
-            <div className="mt-6 text-3xl">✍️</div>
+            <p className="text-[12px]/[15.84px] text-[#1A1C21] font-medium tracking-normal mb-3">
+              Approved by:
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal">
+              John Doe
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal">
+              HMO Manager
+            </p>
+            <p className="text-[14px]/[16px] text-[#344054] font-hnd font-normal tracking-normal">
+              12 December 2024
+            </p>
+            <div className="flex justify-end items-end mt-8">
+              <SignatureIcon />
+            </div>
           </div>
         </div>
       </div>
