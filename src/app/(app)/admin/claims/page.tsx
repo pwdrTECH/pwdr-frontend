@@ -1,5 +1,8 @@
 "use client";
 
+import { DateRangePicker } from "@/components/filters/date-range";
+import Loader from "@/components/loader/lottie/loader";
+import { TableTitle } from "@/components/table";
 import TablePagination from "@/components/table/pagination";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,14 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useMemo, useState } from "react";
-import ClaimDetailModal from "./_components/detail";
-import { TableTitle } from "@/components/table";
-import ClaimFilters from "./_components/filter";
 import { useClaims } from "@/lib/api/claims";
+import { useMemo, useState } from "react";
 import { EmptyState } from "../_components/EmptyState";
-import Loader from "@/components/loader/lottie/loader";
-import { DateRangePicker } from "@/components/filters/date-range";
+import ClaimDetailModal from "./_components/detail";
+import ClaimFilters from "./_components/filter";
 
 type Status = "Pending" | "Approved";
 
@@ -59,7 +59,6 @@ const getUtilization = (c: Claim) =>
     ? c.utilizationUsed
     : (providerUtilFallback[c.providerName] ?? 40);
 
-// parse either "2025-11-16" or the old human strings "3 Secs ago"
 const getClaimDate = (dateStr: string): Date | null => {
   const now = new Date();
   if (dateStr.includes("ago")) {

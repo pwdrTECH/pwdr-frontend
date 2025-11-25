@@ -20,7 +20,6 @@ interface FilterSelectProps {
   placeholder?: string;
   options: Option[];
   label?: string | ReactNode;
-  /** Optional: extra classes for the trigger */
   triggerClassName?: string;
 }
 
