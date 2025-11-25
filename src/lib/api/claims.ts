@@ -58,6 +58,17 @@ export interface ClaimsApiResponse {
   [key: string]: any
 }
 
+export interface EnrolleeDetailsRequest {
+  id?: string | number
+  enrolee_id?: string
+}
+
+export interface EnrolleeDetailsResponse {
+  status: string
+  data: any
+  message?: string
+  [key: string]: any
+}
 /* ------------------ Hook ------------------ */
 
 export function useClaims(filters: ClaimFilters = {}) {
@@ -80,8 +91,6 @@ export function useClaims(filters: ClaimFilters = {}) {
       )
 
       const payload = res.data
-      console.log(payload)
-
       if (!payload) {
         throw new Error("Failed to fetch claims")
       }
@@ -107,6 +116,32 @@ export function useClaims(filters: ClaimFilters = {}) {
         }
       }
       throw new Error(payload.message || "Failed to fetch claims")
+    },
+  })
+}
+
+export function useEnrolleeDetails(filters: EnrolleeDetailsRequest) {
+  return useQuery({
+    queryKey: ["enrollee-details", filters],
+    enabled: !!filters.id || !!filters.enrolee_id,
+    queryFn: async (): Promise<EnrolleeDetailsResponse> => {
+      const body = {
+        id: filters.id ?? "",
+        enrolee_id: filters.enrolee_id ?? "",
+      }
+
+      const res = await apiClient.post<EnrolleeDetailsResponse>(
+        "/fetch-enrolee-details.php",
+        body
+      )
+
+      const payload = res.data
+
+      if (!payload) throw new Error("Failed to fetch enrollee details")
+
+      if (payload.status === "success") return payload
+
+      throw new Error(payload.message || "Failed to fetch enrollee details")
     },
   })
 }

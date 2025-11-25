@@ -1,11 +1,11 @@
-import React from "react"
-import { Button } from "@/components/ui/button"
+import type { MouseEventHandler } from "react";
+import { Button } from "@/components/ui/button";
 
 interface CancelButtonProps {
-  onClick?: React.MouseEventHandler<HTMLButtonElement>
-  text?: string
-  disabled?: boolean
-  className?: string
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  text?: string;
+  disabled?: boolean;
+  className?: string;
 }
 export function CancelButton({
   disabled,
@@ -23,5 +23,5 @@ export function CancelButton({
     >
       {text}
     </Button>
-  )
+  );
 }

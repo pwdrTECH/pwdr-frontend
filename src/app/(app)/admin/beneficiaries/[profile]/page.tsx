@@ -1,111 +1,123 @@
-"use client"
+"use client";
 
-import { Card } from "@/components/ui/card"
-import { useParams } from "next/navigation"
-import React from "react"
-import { DependentsSection } from "./_components/dependent"
-import { ProfileHeader } from "./_components/header"
-import { PlanSchemeSection } from "./_components/plan-scheme"
-import { ProfileStats } from "./_components/stats"
-// import { ProviderSection } from "./_components/provider"
-import Breadcrumbs from "@/components/navigation/Breadcrumbs"
-import { CircledUpArrow, EditAltIcon, PadlockIcon } from "@/components/svgs"
-import { Button } from "@/components/ui/button"
-import ClaimsTable from "./_components/claim-table"
-import { NextOfKinSection } from "./_components/next-of-kin"
+import { useParams, useSearchParams } from "next/navigation";
+import * as React from "react";
+
+import Breadcrumbs from "@/components/navigation/Breadcrumbs";
+import { CircledUpArrow } from "@/components/svgs";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+import ClaimsTable, { type Claim } from "./_components/claim-table";
+import { DependentsSection } from "./_components/dependent";
+import { ProfileHeader } from "./_components/header";
+import { NextOfKinSection } from "./_components/next-of-kin";
+import { PlanSchemeSection } from "./_components/plan-scheme";
+import { ProfileStats } from "./_components/stats";
+
+import { useEnrolleeDetails } from "@/lib/api/beneficiaries";
+import type { ClaimListItem } from "@/lib/api/claims";
+import { useClaims } from "@/lib/api/claims";
+import { EditEnrolleeForm } from "../_components/edit";
+import RestrictProfile from "../_components/restrict";
 
 function unslug(str: string) {
-  return decodeURIComponent(str.replace(/-/g, " "))
+  return decodeURIComponent(str.replace(/-/g, " "));
+}
+
+// 🔹 Map backend ClaimListItem → UI Claim
+function mapClaimListItemToClaim(item: ClaimListItem): Claim {
+  // Try to be defensive with fields that might not always exist
+  const rawStatus = (item.status || "").toLowerCase();
+
+  let status: Claim["status"];
+  if (rawStatus === "approved") status = "Approved";
+  else if (rawStatus === "rejected" || rawStatus === "declined")
+    status = "Rejected";
+  else status = "Pending";
+
+  // If your backend has a total/amount field use it here instead of [key: string]: any
+  const rawAmount = (item as any).total_amount ?? (item as any).amount ?? null;
+  const cost =
+    rawAmount != null && !Number.isNaN(Number(rawAmount))
+      ? `₦${Number(rawAmount).toLocaleString("en-NG")}`
+      : "—";
+
+  return {
+    claimId: item.tracking_number || String(item.id),
+    diagnosis: item.diagnosis || "—",
+    service: item.channel || "—",
+    drug: item.prescription || "—",
+    cost,
+    status,
+    date: item.encounter_date || "—",
+  };
 }
 
 export default function BeneficiaryProfile() {
-  const params = useParams<{ provider: string }>()
-  const providerSlug = params?.provider ?? ""
-  const beneficiaryName = React.useMemo(
-    () => unslug(providerSlug),
-    [providerSlug]
-  )
+  const params = useParams<{ beneficiary: string }>();
+  const searchParams = useSearchParams();
 
-  const claimsData = [
-    {
-      claimId: "SHTL/CAC/11081",
-      diagnosis: "Allergic conjunctivitis",
-      service: "General Consultation",
-      drug: "Amoxicillin",
-      cost: "N29090",
-      status: "Approved",
-      date: "12/10/23",
-    },
-    {
-      claimId: "SHTL/CBC/11081",
-      diagnosis: "Hypertension",
-      service: "Dermatology",
-      drug: "Paracetamol",
-      cost: "N21877",
-      status: "Rejected",
-      date: "12/10/23",
-    },
-    {
-      claimId: "CSTL/CAC/11082",
-      diagnosis: "Asthma",
-      service: "Cardiology",
-      drug: "Omeprazole",
-      cost: "N500,000",
-      status: "Approved",
-      date: "12/10/23",
-    },
-    {
-      claimId: "BZTL/CBC/11081",
-      diagnosis: "Major Depressive Disorder",
-      service: "Radiology",
-      drug: "Paracetamol",
-      cost: "N877789",
-      status: "Approved",
-      date: "12/10/23",
-    },
-    {
-      claimId: "SHTL/CAD/11081",
-      diagnosis: "Malaria",
-      service: "General Consultation",
-      drug: "Omeprazole",
-      cost: "N90,997",
-      status: "Pending",
-      date: "12/10/23",
-    },
-    {
-      claimId: "CHTL/CBC/11081",
-      diagnosis: "Osteoarthritis",
-      service: "Cardiology",
-      drug: "Atorvastatin",
-      cost: "N76,000",
-      status: "Approved",
-      date: "12/10/23",
-    },
-    {
-      claimId: "CBTL/CBC/11081",
-      diagnosis: "Catarh",
-      service: "Radiology",
-      drug: "Paracetamol",
-      cost: "N66,000",
-      status: "Approved",
-      date: "12/10/23",
-    },
-    {
-      claimId: "SHTL/CBC/11081",
-      diagnosis: "Malaria",
-      service: "General Consultation",
-      drug: "Omeprazole",
-      cost: "N91,000",
-      status: "Approved",
-      date: "12/10/23",
-    },
-  ]
+  const beneficiarySlug = params?.beneficiary ?? "";
+  const enrolleeCodeFromQuery = searchParams.get("enid") ?? "";
 
-  const [activeTab, setActiveTab] = React.useState("all")
+  // Use the query param as the real enrollee_id for the API
+  const enrolleeIdForApi = enrolleeCodeFromQuery || beneficiarySlug;
+
+  const {
+    data: enrollee,
+    isLoading,
+    isError,
+    error,
+  } = useEnrolleeDetails({
+    enrolee_id: enrolleeIdForApi,
+  });
+
+  const fallbackName = React.useMemo(
+    () => unslug(beneficiarySlug),
+    [beneficiarySlug],
+  );
+
+  const beneficiaryName =
+    enrollee &&
+    (enrollee.first_name ||
+      enrollee.other_names ||
+      enrollee.surname ||
+      enrollee.enrolee_id)
+      ? [enrollee.first_name, enrollee.other_names, enrollee.surname]
+          .filter(Boolean)
+          .join(" ")
+      : fallbackName;
+
+  // Fetch claims for this enrollee using their internal id
+  const {
+    data: claimsResponse,
+    isLoading: claimsLoading,
+    isError: claimsError,
+    error: claimsErrorObj,
+  } = useClaims(
+    enrollee?.id
+      ? {
+          enrolee_id: enrollee.id,
+          page: 1,
+          limit: 20,
+        }
+      : {},
+  );
+
+  const rawClaims: ClaimListItem[] = claimsResponse?.data ?? [];
+
+  // 🔹 Map backend payload into UI model the table expects
+  const uiClaims: Claim[] = React.useMemo(
+    () => rawClaims.map(mapClaimListItemToClaim),
+    [rawClaims],
+  );
 
   return (
     <div className="w-full flex flex-col gap-4">
       <Breadcrumbs />
+
+      {/* Action buttons */}
       <div className="h-10 flex gap-4 justify-end py-1">
         <Button
           variant="outline"
@@ -113,34 +125,62 @@ export default function BeneficiaryProfile() {
         >
           <CircledUpArrow /> Upgrade Plan
         </Button>
-        <Button
-          variant="outline"
-          className="h-10 rounded-xl border border-[#D0D5DD] py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
-        >
-          <PadlockIcon /> Restrict Enrollee
-        </Button>
-        <Button
-          variant="outline"
-          className="h-10 rounded-xl border border-[#D0D5DD] py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
-        >
-          <EditAltIcon /> Edit Profile
-        </Button>
+        <RestrictProfile />
+        <EditEnrolleeForm enrollee={enrollee ?? null} />
       </div>
+
       <Card className="px-8 rounded-2xl flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row gap-6">
-          <div className="w-full sm:w-[70%] flex flex-col gap-9">
-            <ProfileHeader />
-            <ProfileStats />
-            <DependentsSection />
+        {/* Loading / Error states */}
+        {isLoading && (
+          <div className="py-10 text-center text-sm text-[#6B7280]">
+            Loading enrollee profile…
           </div>
-          <div className="w-full sm:w-[30%] flex flex-col gap-6">
-            <PlanSchemeSection />
-            {/* <ProviderSection /> */}
-            <NextOfKinSection />
+        )}
+
+        {isError && (
+          <div className="py-10 text-center text-sm text-red-600">
+            {(error as Error)?.message || "Failed to load enrollee profile."}
           </div>
-        </div>
-        <ClaimsTable />
+        )}
+
+        {!isLoading && !isError && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* Left column: profile + stats + dependents */}
+              <div className="w-full sm:w-[70%] flex flex-col gap-9">
+                <ProfileHeader
+                  name={beneficiaryName}
+                  enrollee={enrollee ?? undefined}
+                />
+                <ProfileStats enrollee={enrollee ?? undefined} />
+                <DependentsSection enrollee={enrollee ?? undefined} />
+              </div>
+
+              {/* Right column: plan/scheme + next of kin */}
+              <div className="w-full sm:w-[30%] flex flex-col gap-6">
+                <PlanSchemeSection enrollee={enrollee ?? undefined} />
+                <NextOfKinSection enrollee={enrollee ?? undefined} />
+              </div>
+            </div>
+
+            {/* Claims */}
+            {claimsLoading && (
+              <div className="py-6 text-sm text-[#6B7280]">Loading claims…</div>
+            )}
+
+            {claimsError && (
+              <div className="py-6 text-sm text-red-600">
+                {(claimsErrorObj as Error)?.message ||
+                  "Failed to load claims for this enrollee."}
+              </div>
+            )}
+
+            {!claimsLoading && !claimsError && (
+              <ClaimsTable claims={uiClaims} />
+            )}
+          </>
+        )}
       </Card>
     </div>
-  )
+  );
 }

@@ -1,67 +1,71 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import TablePagination from "@/components/table/pagination";
+import { RowMenu } from "@/components/table/pagination/callout";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import TablePagination from "@/components/table/pagination"
-import { RowMenu } from "@/components/table/pagination/callout"
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import * as React from "react";
 
-interface Claim {
-  claimId: string
-  diagnosis: string
-  service: string
-  drug: string
-  cost: string
-  status: "Approved" | "Rejected" | "Pending"
-  date: string
+// 🔹 Export this so we can reuse it in BeneficiaryProfile
+export interface Claim {
+  claimId: string;
+  diagnosis: string;
+  service: string;
+  drug: string;
+  cost: string;
+  status: "Approved" | "Rejected" | "Pending";
+  date: string;
 }
 
 interface ClaimsTableProps {
-  claims?: Claim[]
+  claims?: Claim[];
 }
 
 function getStatusBadgeStyles(status: string) {
   switch (status) {
     case "Approved":
-      return "bg-[#E7EFFC] text-primary"
+      return "bg-[#E7EFFC] text-primary";
     case "Rejected":
-      return "bg-[#F8D4D4] text-[#D90F0F]"
+      return "bg-[#F8D4D4] text-[#D90F0F]";
     case "Pending":
-      return "bg-amber-50 text-amber-600"
+      return "bg-amber-50 text-amber-600";
     default:
-      return "bg-gray-50 text-gray-600"
+      return "bg-gray-50 text-gray-600";
   }
 }
 
-export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
-  const [activeTab, setActiveTab] = React.useState("all")
-  const [page, setPage] = React.useState(1)
-  const pageSize = 10
+export default function ClaimsTable({ claims = [] }: ClaimsTableProps) {
+  const [activeTab, setActiveTab] = React.useState("all");
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
 
   const filteredClaims = React.useMemo(() => {
-    if (activeTab === "all") return claims
-    if (activeTab === "approved")
-      return claims.filter((c) => c.status === "Approved")
-    if (activeTab === "rejected")
-      return claims.filter((c) => c.status === "Rejected")
-    if (activeTab === "pending")
-      return claims.filter((c) => c.status === "Pending")
-    return claims
-  }, [activeTab, claims])
+    switch (activeTab) {
+      case "approved":
+        return claims.filter((c) => c.status === "Approved");
+      case "rejected":
+        return claims.filter((c) => c.status === "Rejected");
+      case "pending":
+        return claims.filter((c) => c.status === "Pending");
+      default:
+        return claims;
+    }
+  }, [activeTab, claims]);
 
-  const totalItems = filteredClaims?.length || 0
-  const start = (page - 1) * pageSize
-  const slice = filteredClaims?.slice(start, start + pageSize)
-  const controlsId = "claims-table-body"
+  const totalItems = filteredClaims.length;
+  const start = (page - 1) * pageSize;
+  const slice = filteredClaims.slice(start, start + pageSize);
+  const controlsId = "claims-table-body";
 
   return (
     <div className="w-full border border-[#EAECF0] rounded-lg">
@@ -76,7 +80,7 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
         </div>
 
         <TabsContent value={activeTab} className="m-0">
-          <div className="w-full overflow-x-auto">
+          <TableContainer>
             <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow className="border-b border-gray-200">
@@ -92,7 +96,7 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
               </TableHeader>
 
               <TableBody id={controlsId}>
-                {slice?.map((claim) => (
+                {slice.map((claim) => (
                   <TableRow
                     key={claim.claimId}
                     className="hover:bg-gray-50 border-b border-gray-100"
@@ -123,7 +127,7 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
                       <Badge
                         className={cn(
                           "text-xs border-0",
-                          getStatusBadgeStyles(claim.status)
+                          getStatusBadgeStyles(claim.status),
                         )}
                       >
                         {claim.status}
@@ -140,7 +144,10 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
                           {
                             type: "button",
                             button: (
-                              <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                              <button
+                                type="button"
+                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              >
                                 View Details
                               </button>
                             ),
@@ -149,7 +156,10 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
                           {
                             type: "button",
                             button: (
-                              <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                              <button
+                                type="button"
+                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              >
                                 Edit
                               </button>
                             ),
@@ -158,7 +168,10 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
                           {
                             type: "button",
                             button: (
-                              <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                              <button
+                                type="button"
+                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              >
                                 Delete
                               </button>
                             ),
@@ -169,7 +182,7 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
                   </TableRow>
                 ))}
 
-                {slice?.length === 0 && (
+                {slice.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={8}
@@ -181,7 +194,7 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </TableContainer>
 
           <TablePagination
             page={page}
@@ -195,80 +208,5 @@ export default function ClaimsTable({ claims = claimsData }: ClaimsTableProps) {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
-
-const claimsData: Claim[] = [
-  {
-    claimId: "SHTL/CAC/11081",
-    diagnosis: "Allergic conjunctivitis",
-    service: "General Consultation",
-    drug: "Amoxicillin",
-    cost: "N29090",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    claimId: "SHTL/CBC/11082",
-    diagnosis: "Hypertension",
-    service: "Dermatology",
-    drug: "Paracetamol",
-    cost: "N21877",
-    status: "Rejected",
-    date: "12/10/23",
-  },
-  {
-    claimId: "CSTL/CAC/11083",
-    diagnosis: "Asthma",
-    service: "Cardiology",
-    drug: "Omeprazole",
-    cost: "N500,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    claimId: "BZTL/CBC/11084",
-    diagnosis: "Major Depressive Disorder",
-    service: "Radiology",
-    drug: "Paracetamol",
-    cost: "N877789",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    claimId: "SHTL/CAD/11085",
-    diagnosis: "Malaria",
-    service: "General Consultation",
-    drug: "Omeprazole",
-    cost: "N90,997",
-    status: "Pending",
-    date: "12/10/23",
-  },
-  {
-    claimId: "CHTL/CBC/11086",
-    diagnosis: "Osteoarthritis",
-    service: "Cardiology",
-    drug: "Atorvastatin",
-    cost: "N76,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    claimId: "CBTL/CBC/11087",
-    diagnosis: "Catarh",
-    service: "Radiology",
-    drug: "Paracetamol",
-    cost: "N66,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    claimId: "SHTL/CBC/11088",
-    diagnosis: "Malaria",
-    service: "General Consultation",
-    drug: "Omeprazole",
-    cost: "N91,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-]

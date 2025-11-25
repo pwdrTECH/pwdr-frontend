@@ -1,46 +1,47 @@
-"use client"
+"use client";
 
-import TablePagination from "@/components/table/pagination"
-import { RowMenu } from "@/components/table/pagination/callout"
+import TablePagination from "@/components/table/pagination";
+import { RowMenu } from "@/components/table/pagination/callout";
 import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
-import * as React from "react"
-import DeleteService from "./deleteService"
-import EditService from "./editService"
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import * as React from "react";
+import DeleteService from "./deleteService";
+import EditService from "./editService";
 
 export interface Service {
-  id: string
-  name: string
-  scheme: string
-  category: string
-  cost: string
-  lastUpdated: string
-  status: "Approved" | "Pending"
+  id: string;
+  name: string;
+  scheme: string;
+  category: string;
+  cost: string;
+  lastUpdated: string;
+  status: "Approved" | "Pending";
 }
 
 interface ServicesTableProps {
-  services: Service[]
+  services: Service[];
 }
 
 export function ServicesTable({ services }: ServicesTableProps) {
-  const [page, setPage] = React.useState(1)
-  const pageSize = 10
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
 
-  const totalItems = services.length
-  const start = (page - 1) * pageSize
-  const slice = services.slice(start, start + pageSize)
-  const controlsId = "services-table-body"
+  const totalItems = services.length;
+  const start = (page - 1) * pageSize;
+  const slice = services.slice(start, start + pageSize);
+  const controlsId = "services-table-body";
 
   return (
     <div className="w-full border border-[#EAECF0] shadow-[0px_1px_2px_0px_#1018280D] rounded-[12px]">
-      <div className="w-full overflow-x-auto rounded-[12px]">
+      <TableContainer className="rounded-[12px]">
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
@@ -85,7 +86,7 @@ export function ServicesTable({ services }: ServicesTableProps) {
                       "inline-flex px-2 py-1 rounded-[6px] text-[12px]/[18px] font-bold",
                       service.status === "Approved"
                         ? "bg-[#1671D91A] text-[#1671D9]"
-                        : "bg-white border border-[#979797] text-[#979797]"
+                        : "bg-white border border-[#979797] text-[#979797]",
                     )}
                   >
                     {service.status}
@@ -122,7 +123,7 @@ export function ServicesTable({ services }: ServicesTableProps) {
             )}
           </TableBody>
         </Table>
-      </div>
+      </TableContainer>
 
       <TablePagination
         page={page}
@@ -134,5 +135,5 @@ export function ServicesTable({ services }: ServicesTableProps) {
         controlsId={controlsId}
       />
     </div>
-  )
+  );
 }

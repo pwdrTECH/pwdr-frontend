@@ -1,32 +1,23 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import * as React from "react";
 import TablePagination from "@/components/table/pagination";
 import { RowMenu } from "@/components/table/pagination/callout";
 import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { cn, slugify } from "@/lib/utils";
-
-interface Enrollee {
-  id: string;
-  name: string;
-  enrolleeId: string;
-  scheme: string;
-  plan: string;
-  role: string;
-  balance: string;
-  utilization: number;
-}
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import type { EnrolleeRow } from "../page";
 
 interface EnrolleesTableProps {
-  enrollees: Enrollee[];
+  enrollees: EnrolleeRow[];
 }
 
 function getUtilizationColor(utilization: number): string {
@@ -51,9 +42,19 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
   const slice = enrollees?.slice(start, start + pageSize);
   const controlsId = "enrollees-table-body";
 
+  const handleViewBeneficiary = (enrollee: EnrolleeRow) => {
+    if (!enrollee.enrolee_id) return;
+    const name =
+      `${enrollee.first_name} ${enrollee.other_names} ${enrollee.surname}`.trim() ||
+      "beneficiary";
+
+    // Use enrolleeId (code) as the dynamic route segment,
+    const encoded = encodeURIComponent(enrollee.enrolee_id);
+    router.push(`/admin/beneficiaries/${slugify(name)}?enid=${encoded}`);
+  };
   return (
     <div className="w-full border-t border-[#EAECF0]">
-      <div className="w-full overflow-x-auto">
+      <TableContainer>
         <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow className="border-b border-gray-200">
@@ -76,22 +77,23 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
                 <TableCell className="pl-6">
                   <div className="flex flex-col">
                     <div className="font-hnd font-medium text-[16px]/[24px] text-[#293347]">
-                      {enrollee.name}
+                      {`${enrollee?.first_name} ${enrollee.other_names} ${enrollee.surname}`.trim() ||
+                        "—"}
                     </div>
                     <div className="text-[14px]/[16px] font-hnd font-normal tracking-normal text-[#636E7D] flex items-center">
                       <span className="h-[6px] w-[6px] text-[#E3E3E3]">
                         &#183;
                       </span>
-                      {enrollee.enrolleeId}
+                      {enrollee.enrolee_id}
                     </div>
                   </div>
                 </TableCell>
 
                 <TableCell>{enrollee.scheme}</TableCell>
 
-                <TableCell>{enrollee.plan}</TableCell>
+                <TableCell>{enrollee.plan_name}</TableCell>
 
-                <TableCell>{enrollee.role}</TableCell>
+                <TableCell>{enrollee.user_role}</TableCell>
 
                 <TableCell>{enrollee.balance}</TableCell>
 
@@ -123,11 +125,7 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
                           <button
                             type="button"
                             className="p-1 hover:bg-gray-200 rounded transition-colors"
-                            onClick={() =>
-                              router.push(
-                                `/admin/beneficiaries/${slugify(enrollee.name)}`,
-                              )
-                            }
+                            onClick={() => handleViewBeneficiary(enrollee)}
                           >
                             View Beneficiary
                           </button>
@@ -175,7 +173,7 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
             )}
           </TableBody>
         </Table>
-      </div>
+      </TableContainer>
 
       <TablePagination
         page={page}

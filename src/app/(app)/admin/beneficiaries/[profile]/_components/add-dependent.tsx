@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { TextField } from "@/components/form"
-import { AddButon, CancelButton, SubmitButton } from "@/components/form/button"
-import { ConfirmPopover } from "@/components/overlays/ConfirmPopover"
-import { CustomSheet } from "@/components/overlays/SideDialog"
-import { UploadFile } from "@/components/svgs"
-import { Button } from "@/components/ui/button"
-import { Form } from "@/components/ui/form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, PlusIcon, X } from "lucide-react"
-import Image from "next/image"
-import React, { useState } from "react"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { TextField } from "@/components/form";
+import { CancelButton, SubmitButton } from "@/components/form/button";
+import { ConfirmPopover } from "@/components/overlays/ConfirmPopover";
+import { CustomSheet } from "@/components/overlays/SideDialog";
+import { UploadFile } from "@/components/svgs";
+import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, PlusIcon, X } from "lucide-react";
+import Image from "next/image";
+import { type ChangeEvent, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const enrolleeSchema = z.object({
   dependents: z
@@ -22,7 +22,7 @@ const enrolleeSchema = z.object({
         firstName: z.string().optional(),
         otherName: z.string().optional(),
         passportImage: z.string().optional().nullable(),
-      })
+      }),
     )
     .optional(),
 
@@ -31,25 +31,25 @@ const enrolleeSchema = z.object({
   nokStreet: z.string().optional(),
   nokMobile: z.string().optional(),
   nokEmail: z.string().optional(),
-})
+});
 
-type EnrolleeFormValues = z.infer<typeof enrolleeSchema>
+type EnrolleeFormValues = z.infer<typeof enrolleeSchema>;
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
     reader.onload = () => {
-      const result = reader.result as string
-      resolve(result)
-    }
-    reader.onerror = reject
-  })
-}
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = reject;
+  });
+};
 
 export function AddDependence() {
-  const [open, setOpen] = useState(false)
-  const [dependentImage, setDependentImage] = useState<string | null>(null)
+  const [open, setOpen] = useState(false);
+  const [dependentImage, setDependentImage] = useState<string | null>(null);
 
   const form = useForm<EnrolleeFormValues>({
     resolver: zodResolver(enrolleeSchema) as any,
@@ -57,34 +57,34 @@ export function AddDependence() {
       dependents: [],
     },
     mode: "onSubmit",
-  })
+  });
 
   const handleDependentImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       try {
-        const base64 = await fileToBase64(file)
-        setDependentImage(base64)
-        form.setValue("dependents.0.passportImage", base64)
+        const base64 = await fileToBase64(file);
+        setDependentImage(base64);
+        form.setValue("dependents.0.passportImage", base64);
       } catch (error) {
-        console.error("Error converting file to base64:", error)
+        console.error("Error converting file to base64:", error);
       }
     }
-  }
+  };
 
   const removeDependentImage = () => {
-    setDependentImage(null)
-    form.setValue("dependents.0.passportImage", null)
-  }
+    setDependentImage(null);
+    form.setValue("dependents.0.passportImage", null);
+  };
 
   const onSubmit = (values: EnrolleeFormValues) => {
-    console.log("Enrollee Created:", values)
-    setOpen(false)
-    setDependentImage(null)
-    form.reset()
-  }
+    console.log("Enrollee Created:", values);
+    setOpen(false);
+    setDependentImage(null);
+    form.reset();
+  };
 
   return (
     <CustomSheet
@@ -106,9 +106,9 @@ export function AddDependence() {
             confirmText="Yes, Cancel"
             trigger={<CancelButton text="Cancel" />}
             onConfirm={() => {
-              form.reset()
-              setDependentImage(null)
-              setOpen(false)
+              form.reset();
+              setDependentImage(null);
+              setOpen(false);
             }}
             description={
               <p className="font-hnd font-normal text-[#667085] text-[16px]/[24px] tracking-normal space-y-2">
@@ -172,7 +172,7 @@ export function AddDependence() {
                 }
                 className="h-9 flex items-center justify-center gap-1 text-[#1671D9] font-semibold text-[14px]/[20px] tracking-normal border-[#1671D91A] bg-[#1671D91A] hover:bg-[#1671D91A]/90 hover:text-[#1671D9] px-3 py-2 cursor-pointer"
               >
-                <UploadFile />
+                <UploadFile className="text-[#1671D9]" />
                 Upload Passport
               </Button>
             </div>
@@ -209,5 +209,5 @@ export function AddDependence() {
         </form>
       </Form>
     </CustomSheet>
-  )
+  );
 }

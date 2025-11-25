@@ -21,10 +21,10 @@ import { useMemo, useState } from "react";
 import ClaimDetailModal from "./_components/detail";
 import { TableTitle } from "@/components/table";
 import ClaimFilters from "./_components/filter";
-import DateRangePicker from "./_components/date-range";
 import { useClaims } from "@/lib/api/claims";
 import { EmptyState } from "../_components/EmptyState";
 import Loader from "@/components/loader/lottie/loader";
+import { DateRangePicker } from "@/components/filters/date-range";
 
 type Status = "Pending" | "Approved";
 
@@ -292,7 +292,7 @@ export default function ClaimsPage() {
 
             {/* Date range */}
             <DateRangePicker
-              onDateRangeChange={(start, end) => {
+              onChange={(start, end) => {
                 setStartDate(start);
                 setEndDate(end);
                 setCurrentPage(1);

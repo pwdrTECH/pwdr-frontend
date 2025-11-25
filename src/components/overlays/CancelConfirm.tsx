@@ -1,11 +1,11 @@
-"use client"
-import * as React from "react"
-import { ConfirmPopover, type ConfirmPopoverProps } from "./ConfirmPopover"
+"use client";
+import type { ReactNode } from "react";
+import { ConfirmPopover, type ConfirmPopoverProps } from "./ConfirmPopover";
 
 export function CancelConfirm(
   props: Omit<ConfirmPopoverProps, "variant" | "title"> & {
-    title?: React.ReactNode
-  }
+    title?: ReactNode;
+  },
 ) {
   return (
     <ConfirmPopover
@@ -14,5 +14,5 @@ export function CancelConfirm(
       confirmText="Yes, Cancel"
       {...props}
     />
-  )
+  );
 }

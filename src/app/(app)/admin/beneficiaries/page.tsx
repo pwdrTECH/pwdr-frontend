@@ -12,12 +12,39 @@ import EnrolleesTable from "./_components/table";
 
 type StatusValue = "active" | "pending" | "suspended" | "inactive";
 
-type EnrolleeRow = {
-  id: string;
-  name: string;
-  enrolleeId: string;
+export type EnrolleeRow = {
+  id: number | string;
+  email: string;
+  first_name: string;
+  surname: string;
+  other_names: string;
+  gender: string;
+  dob: string;
+  passport: string;
+  address: string;
+  city: string;
+  state: number;
+  phone: string;
+  marital_status: string;
+  origin_state: number;
+  origin_lga: number;
+  employment_status: string;
+  occupation: string;
+  active: number;
+  date_created: string;
+  enrolee_id: string;
+  user_role: string;
+  principal_id?: string | null;
+  hmo_id: number;
+  plan_id: number;
+  next_of_kin: string;
+  next_of_kin_relationship: string;
+  next_of_kin_phone: string;
+  next_of_kin_address: string;
+  plan_name: string;
+  state_name: string;
   scheme: string;
-  plan: string;
+  plan: number | string;
   role: string;
   balance: string;
   utilization: number;
@@ -31,27 +58,20 @@ export default function BeneficiariesPage() {
     plans: string[];
   }>({ statuses: [], plans: [] });
 
-  // Build a stable filters object for the query key (so React Query
-  // doesn't think it's a new object on every render)
   const queryFilters = React.useMemo(
     () => ({
       search,
       statuses: filters.statuses,
       plans: filters.plans,
-      // you can add page / limit here later if backend supports it
     }),
     [search, filters.statuses, filters.plans],
   );
 
-  // === 1) Fetch beneficiaries from backend ===
   const { data, isLoading, isError, error } = useBeneficiaries(queryFilters);
 
-  console.log("Beneficiaries data:", data);
-  // === 2) Map API payload -> UI-friendly rows ===
   const beneficiaries: EnrolleeRow[] = React.useMemo(() => {
     if (!data) return [];
 
-    // Support both shapes: { data: [...] } or just [...]
     const rawList: any[] = Array.isArray(data?.data)
       ? data.data
       : Array.isArray(data)
@@ -59,21 +79,6 @@ export default function BeneficiariesPage() {
         : [];
 
     return rawList.map((item: any): EnrolleeRow => {
-      // Name: either single `name` or first+surname
-      const firstName = item.enrolee_first_name ?? item.first_name ?? "";
-      const surname = item.enrolee_surname ?? item.last_name ?? "";
-      const combined =
-        `${firstName} ${surname}`.trim() || item.name || "Unknown Enrollee";
-
-      // Enrollee ID/code
-      const enrolleeId =
-        item.enrolee_code ??
-        item.enrolee_id ??
-        item.enrollee_code ??
-        item.enrolleeId ??
-        "";
-
-      // Scheme & plan labels
       const scheme =
         item.scheme ??
         item.scheme_name ??
@@ -123,14 +128,41 @@ export default function BeneficiariesPage() {
       const status = statusMap[statusRaw];
 
       return {
-        id: String(item.id ?? enrolleeId ?? Math.random()),
-        name: combined,
-        enrolleeId: String(enrolleeId),
+        id: item.id,
+        email: item.email || "",
+        first_name: item.first_name || "",
+        surname: item.surname || "",
+        other_names: item.other_names || "",
+        gender: item.gender || "",
+        dob: item.dob || "",
+        passport: item.passport || "",
+        address: item.address || "",
+        city: item.city || "",
+        state: item.state || 0,
+        phone: item.phone || "",
+        marital_status: item.marital_status || "",
+        origin_state: item.origin_state || 0,
+        origin_lga: item.origin_lga || 0,
+        employment_status: item.employment_status || "",
+        occupation: item.occupation || "",
+        active: item.active,
+        date_created: String(item.date_created),
+        enrolee_id: item.enrolee_id,
+        user_role: item.user_role,
+        principal_id: item.principal_id,
+        hmo_id: item.hmo_id,
+        plan_id: item.plan_id,
+        next_of_kin: item.next_of_kin,
+        next_of_kin_relationship: item.next_of_kin_relationship,
+        next_of_kin_phone: item.next_of_kin_phone,
+        next_of_kin_address: item.next_of_kin_address,
+        plan_name: item.plan_name,
+        state_name: item.state_name,
+        utilization,
         scheme,
         plan,
         role,
         balance,
-        utilization,
         status,
       };
     });
@@ -142,7 +174,7 @@ export default function BeneficiariesPage() {
       Array.from(
         new Set(
           beneficiaries
-            .map((e) => e.plan)
+            .map((e) => e.plan_name)
             .filter((p) => p && typeof p === "string"),
         ),
       ),
@@ -152,15 +184,15 @@ export default function BeneficiariesPage() {
   // === 4) Client-side filtering (search + plans + statuses) ===
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-
     return beneficiaries.filter((e) => {
+      const combined = `${e.first_name} ${e.surname} ${e.other_names}`.trim();
       const matchesSearch =
         !q ||
-        e.name.toLowerCase().includes(q) ||
-        e.enrolleeId.toLowerCase().includes(q);
+        combined.toLowerCase().includes(q) ||
+        e.enrolee_id.toLowerCase().includes(q);
 
       const matchesPlans =
-        filters.plans.length === 0 || filters.plans.includes(e.plan);
+        filters.plans.length === 0 || filters.plans.includes(e.plan_name);
 
       const matchesStatuses =
         filters.statuses.length === 0 ||
@@ -183,10 +215,12 @@ export default function BeneficiariesPage() {
   return (
     <Card className="p-0">
       <CardHeader className="pb-0 pt-5 px-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {hasAny && (
+        {hasAny ? (
           <TableTitle>
             You have {totalCount.toLocaleString() || 0} Enrollees
           </TableTitle>
+        ) : (
+          <div />
         )}
 
         <div className="flex items-center gap-4">
@@ -208,7 +242,7 @@ export default function BeneficiariesPage() {
         <div className="py-12">
           <EmptyState message="No claim data available" />
         </div>
-      ) : error ? (
+      ) : isError ? (
         <div className="py-12">
           <span className="px-6 py-8 text-sm text-red-500">
             Failed to load enrollees:{" "}

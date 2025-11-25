@@ -1,6 +1,5 @@
-"use client"
+"use client";
 
-import * as React from "react"
 import {
   Sheet,
   SheetContent,
@@ -9,19 +8,20 @@ import {
   SheetOverlay,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import type { ReactNode, ReactElement } from "react";
 
 type CustomSheetProps = {
-  title?: React.ReactNode
-  subtitle?: React.ReactNode
-  trigger?: React.ReactElement
-  children: React.ReactNode // scroll area
-  footer?: React.ReactNode // fixed footer
-  contentClassName?: string
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  trigger?: ReactElement;
+  children: ReactNode;
+  footer?: ReactNode;
+  contentClassName?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
 
 export function CustomSheet({
   title,
@@ -46,7 +46,7 @@ export function CustomSheet({
           // higher than overlay so popovers with z-[200+] can sit above if needed
           "fixed right-0 top-0 z-[200] m-0 h-full w-auto rounded-none border-0 p-0",
           "bg-white shadow-[0px_8.53px_8.53px_-4.27px_#10182808,0px_21.33px_25.6px_-4.27px_#10182814]",
-          "outline-none overflow-hidden flex flex-col"
+          "outline-none overflow-hidden flex flex-col",
         )}
       >
         {(title || subtitle) && (
@@ -76,5 +76,5 @@ export function CustomSheet({
         ) : null}
       </SheetContent>
     </Sheet>
-  )
+  );
 }

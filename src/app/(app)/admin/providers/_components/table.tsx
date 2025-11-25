@@ -7,6 +7,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
@@ -156,11 +157,14 @@ export function ProvidersTable({ query }: { query: string }) {
   const slice = filtered.slice(start, start + pageSize);
   const controlsId = "providers-table-body";
 
-  React.useEffect(() => setPage(1), [query]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we reset page whenever query changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [query]);
 
   return (
     <div className="w-full">
-      <div className="w-full overflow-x-auto">
+      <TableContainer>
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
@@ -288,7 +292,7 @@ export function ProvidersTable({ query }: { query: string }) {
             )}
           </TableBody>
         </Table>
-      </div>
+      </TableContainer>
 
       <TablePagination
         page={page}

@@ -1,6 +1,19 @@
-"use client"
+"use client";
 
-import { AlertCircle, X } from "lucide-react"
+import { CustomSheet } from "@/components/overlays/SideDialog";
+import {
+  MagicPenAltIcon,
+  MagicPenIcon,
+  SignatureIcon,
+} from "@/components/svgs";
+import { TableTitle } from "@/components/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -8,50 +21,35 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { CustomSheet } from "@/components/overlays/SideDialog"
-import {
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { TableTitle } from "@/components/table"
-import {
-  EditAltIcon,
-  EditIcon,
-  MagicPenAltIcon,
-  MagicPenIcon,
-  SignatureIcon,
-} from "@/components/svgs"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/table";
+import { X } from "lucide-react";
 
 interface ClaimDetailModalProps {
   claim: {
-    id: string
-    date: string
-    claimId: string
-    enrolleeName: string
-    enrolleeId: string
-    providerName: string
-    serviceCount: number
-    submittedCost: string
-    totalCost: string
-    status: "Pending" | "Approved"
-  }
-  onClose: () => void
-  open?: boolean
+    id: string;
+    date: string;
+    claimId: string;
+    enrolleeName: string;
+    enrolleeId: string;
+    providerName: string;
+    serviceCount: number;
+    submittedCost: string;
+    totalCost: string;
+    status: "Pending" | "Approved";
+  };
+  onClose: () => void;
+  open?: boolean;
 }
 
 interface TreatmentItem {
-  diagnosis: string
-  services: string
-  serviceCode: string
-  category: string
-  qty: string
-  submittedBill: string
-  status: "Approved" | "Queried"
-  payableBill: string
+  diagnosis: string;
+  services: string;
+  serviceCode: string;
+  category: string;
+  qty: string;
+  submittedBill: string;
+  status: "Approved" | "Queried";
+  payableBill: string;
 }
 
 const treatmentItems: TreatmentItem[] = [
@@ -85,20 +83,20 @@ const treatmentItems: TreatmentItem[] = [
     status: "Queried",
     payableBill: "N400,000",
   },
-]
+];
 
 export default function ClaimDetailModal({
   claim,
   onClose,
   open = false,
 }: ClaimDetailModalProps) {
-  if (!claim) return null
+  if (!claim) return null;
 
   return (
     <CustomSheet
       open={open}
       onOpenChange={(isOpen) => {
-        if (!isOpen) onClose()
+        if (!isOpen) onClose();
       }}
       contentClassName="xl:w-[1222px] p-6"
     >
@@ -204,7 +202,7 @@ export default function ClaimDetailModal({
               </TableHeader>
               <TableBody>
                 {treatmentItems.map((item, idx) => (
-                  <TableRow key={idx}>
+                  <TableRow key={`${idx + 1}`}>
                     <TableCell>{item.diagnosis}</TableCell>
                     <TableCell>
                       <div className="w-fit bg-[#CFCFCF3D] flex items-center gap-2 text-[12px]/[18.68px] text-[#101828] tracking-normal rounded-xl py-[2px] px-2 h-[23px]">
@@ -317,5 +315,5 @@ export default function ClaimDetailModal({
         </div>
       </div>
     </CustomSheet>
-  )
+  );
 }

@@ -1,41 +1,42 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 import {
   CircledApprovedIconAlt,
   IdCardIcon,
   RecyledIcon,
   RejectIcon,
-} from "@/components/svgs"
-import TablePagination from "@/components/table/pagination"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+} from "@/components/svgs";
+import TablePagination from "@/components/table/pagination";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 
-type RequestStatus = "Approved" | "Rejected" | "Pending"
-type TimeFilter = "Day" | "Month" | "Year" | "All"
+type RequestStatus = "Approved" | "Rejected" | "Pending";
+type TimeFilter = "Day" | "Month" | "Year" | "All";
 
 interface Request {
-  id: string
-  enrolleeName: string
-  enrolleeId: string
-  diagnosis: string
-  services: string
-  drug: string
-  cost: string
-  status: RequestStatus
-  date: string // e.g. "12/10/23" (dd/mm/yy)
+  id: string;
+  enrolleeName: string;
+  enrolleeId: string;
+  diagnosis: string;
+  services: string;
+  drug: string;
+  cost: string;
+  status: RequestStatus;
+  date: string; // e.g. "12/10/23" (dd/mm/yy)
 }
 
 const mockRequests: Request[] = [
@@ -127,29 +128,29 @@ const mockRequests: Request[] = [
     status: "Approved",
     date: "12/10/23",
   },
-]
+];
 
 const getStatusColor = (status: RequestStatus) => {
   switch (status) {
     case "Approved":
-      return "bg-[#1671D91A] text-[#1671D9] border-[#0000001A]"
+      return "bg-[#1671D91A] text-[#1671D9] border-[#0000001A]";
     case "Rejected":
-      return "bg-[#FEF3F2] text-red-700 border-[#FECDCA]"
+      return "bg-[#FEF3F2] text-red-700 border-[#FECDCA]";
     case "Pending":
-      return "bg-[#FFFAEB] text-[#B54708] border-[#FEDF89]"
+      return "bg-[#FFFAEB] text-[#B54708] border-[#FEDF89]";
     default:
-      return "bg-gray-50 text-gray-700 border-[#EAECF0]"
+      return "bg-gray-50 text-gray-700 border-[#EAECF0]";
   }
-}
+};
 
 const StatCard = ({
   title,
   value,
   icon,
 }: {
-  title: string
-  value: string
-  icon: React.ReactNode
+  title: string;
+  value: string;
+  icon: React.ReactNode;
 }) => (
   <div className="h-[124px] bg-white rounded-[12px] border border-[#EAECF0] p-4 flex items-start justify-between">
     <div className="h-[80px] flex flex-col gap-8">
@@ -162,23 +163,23 @@ const StatCard = ({
     </div>
     <div>{icon}</div>
   </div>
-)
+);
 
 /* ---------- helpers: date parsing + time filter ---------- */
 
 // parse "dd/mm/yy" safely; falls back to native Date if not in that format
 function parseDMY(d: string): Date | null {
-  const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+  const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (m) {
-    const dd = Number(m[1])
-    const mm = Number(m[2])
-    let yy = Number(m[3])
-    if (yy < 100) yy += 2000
-    const dt = new Date(yy, mm - 1, dd)
-    return isNaN(dt.getTime()) ? null : dt
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    let yy = Number(m[3]);
+    if (yy < 100) yy += 2000;
+    const dt = new Date(yy, mm - 1, dd);
+    return Number.isNaN(dt.getTime()) ? null : dt;
   }
-  const dt = new Date(d)
-  return isNaN(dt.getTime()) ? null : dt
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
 function sameDay(a: Date, b: Date) {
@@ -186,39 +187,39 @@ function sameDay(a: Date, b: Date) {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
-  )
+  );
 }
 function sameMonth(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 function sameYear(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear()
+  return a.getFullYear() === b.getFullYear();
 }
 
 export default function RequestStatusPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("All")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("All");
   const [statusTab, setStatusTab] = useState<
     "all" | "approved" | "pending" | "rejected"
-  >("all")
-  const [page, setPage] = useState(1)
-  const pageSize = 10
+  >("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   // latest date in data -> reference for Day/Month/Year filters
   const latestDate = useMemo(() => {
-    let latest: Date | null = null
+    let latest: Date | null = null;
     for (const r of mockRequests) {
-      const d = parseDMY(r.date)
-      if (!d) continue
-      if (!latest || d > latest) latest = d
+      const d = parseDMY(r.date);
+      if (!d) continue;
+      if (!latest || d > latest) latest = d;
     }
-    return latest
-  }, [])
+    return latest;
+  }, []);
 
   // 1) search
   const searchFiltered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return mockRequests
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return mockRequests;
     return mockRequests.filter((r) => {
       const hay = [
         r.enrolleeName,
@@ -232,55 +233,57 @@ export default function RequestStatusPage() {
         r.date,
       ]
         .join(" ")
-        .toLowerCase()
-      return hay.includes(q)
-    })
-  }, [searchQuery])
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [searchQuery]);
 
   // 2) time
   const timeFiltered = useMemo(() => {
-    if (timeFilter === "All" || !latestDate) return searchFiltered
+    if (timeFilter === "All" || !latestDate) return searchFiltered;
     return searchFiltered.filter((r) => {
-      const d = parseDMY(r.date)
-      if (!d) return false
-      if (timeFilter === "Day") return sameDay(d, latestDate)
-      if (timeFilter === "Month") return sameMonth(d, latestDate)
-      if (timeFilter === "Year") return sameYear(d, latestDate)
-      return true
-    })
-  }, [searchFiltered, timeFilter, latestDate])
+      const d = parseDMY(r.date);
+      if (!d) return false;
+      if (timeFilter === "Day") return sameDay(d, latestDate);
+      if (timeFilter === "Month") return sameMonth(d, latestDate);
+      if (timeFilter === "Year") return sameYear(d, latestDate);
+      return true;
+    });
+  }, [searchFiltered, timeFilter, latestDate]);
 
   // 3) status tab
   const tableFiltered = useMemo(() => {
     switch (statusTab) {
       case "approved":
-        return timeFiltered.filter((r) => r.status === "Approved")
+        return timeFiltered.filter((r) => r.status === "Approved");
       case "pending":
-        return timeFiltered.filter((r) => r.status === "Pending")
+        return timeFiltered.filter((r) => r.status === "Pending");
       case "rejected":
-        return timeFiltered.filter((r) => r.status === "Rejected")
+        return timeFiltered.filter((r) => r.status === "Rejected");
       default:
-        return timeFiltered
+        return timeFiltered;
     }
-  }, [timeFiltered, statusTab])
+  }, [timeFiltered, statusTab]);
 
   // stats reflect global (search + time), not the status sub-filter
-  const statTotal = timeFiltered.length
+  const statTotal = timeFiltered.length;
   const statApproved = timeFiltered.filter(
-    (r) => r.status === "Approved"
-  ).length
+    (r) => r.status === "Approved",
+  ).length;
   const statRejected = timeFiltered.filter(
-    (r) => r.status === "Rejected"
-  ).length
-  const statPending = timeFiltered.filter((r) => r.status === "Pending").length
+    (r) => r.status === "Rejected",
+  ).length;
+  const statPending = timeFiltered.filter((r) => r.status === "Pending").length;
 
-  const totalItems = tableFiltered.length
-  const start = (page - 1) * pageSize
-  const slice = tableFiltered.slice(start, start + pageSize)
-  const controlsId = "request-status-table-body"
+  const totalItems = tableFiltered.length;
+  const start = (page - 1) * pageSize;
+  const slice = tableFiltered.slice(start, start + pageSize);
+  const controlsId = "request-status-table-body";
 
-  useEffect(() => setPage(1), [searchQuery, timeFilter, statusTab])
-
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we intentionally reset page when any filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, timeFilter, statusTab]);
   return (
     <main className="w-full">
       <Tabs
@@ -327,7 +330,7 @@ export default function RequestStatusPage() {
                       >
                         {filter}
                       </Button>
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -361,7 +364,7 @@ export default function RequestStatusPage() {
 
         {/* Table Content */}
         <div className="bg-white border border-t-0 border-[#EAECF0] rounded-b-lg overflow-hidden">
-          <div className="overflow-x-auto">
+          <TableContainer>
             <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
@@ -410,7 +413,7 @@ export default function RequestStatusPage() {
                       <Badge
                         variant="outline"
                         className={`font-medium ${getStatusColor(
-                          request.status
+                          request.status,
                         )}`}
                       >
                         {request.status}
@@ -434,7 +437,7 @@ export default function RequestStatusPage() {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </TableContainer>
 
           {/* Pagination */}
           <TablePagination
@@ -449,5 +452,5 @@ export default function RequestStatusPage() {
         </div>
       </Tabs>
     </main>
-  )
+  );
 }

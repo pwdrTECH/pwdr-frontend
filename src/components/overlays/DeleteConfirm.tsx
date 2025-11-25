@@ -1,11 +1,11 @@
-"use client"
-import * as React from "react"
-import { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog"
+"use client";
+import type { ReactNode } from "react";
+import { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 
 export function DeleteConfirm(
   props: Omit<ConfirmDialogProps, "variant" | "title"> & {
-    title?: React.ReactNode
-  }
+    title?: ReactNode;
+  },
 ) {
   return (
     <ConfirmDialog
@@ -14,5 +14,5 @@ export function DeleteConfirm(
       confirmText="Yes, Delete"
       {...props}
     />
-  )
+  );
 }

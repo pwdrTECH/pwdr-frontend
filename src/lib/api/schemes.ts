@@ -42,6 +42,18 @@ type FetchPlansEnvelope = {
   message?: string
 }
 
+export interface PlanDetailsRequest {
+  id: string | number
+  show_services?: 0 | 1
+}
+
+export interface PlanDetailsResponse {
+  status: string
+  data: any
+  message?: string
+  [key: string]: any
+}
+
 /* ============================
     Fetch Schemes
 ============================ */
@@ -151,6 +163,32 @@ export function useCreatePlan() {
     onSuccess: () => {
       // refresh schemes list so UI updates
       queryClient.invalidateQueries({ queryKey: ["schemes"] })
+    },
+  })
+}
+
+export function usePlanDetails(filters: PlanDetailsRequest) {
+  return useQuery({
+    queryKey: ["plan-details", filters],
+    enabled: !!filters.id,
+    queryFn: async (): Promise<PlanDetailsResponse> => {
+      const body = {
+        id: filters.id,
+        show_services: filters.show_services ?? 1,
+      }
+
+      const res = await apiClient.post<PlanDetailsResponse>(
+        "/fetch-plan-details.php",
+        body
+      )
+
+      const payload = res.data
+
+      if (!payload) throw new Error("Failed to fetch plan details")
+
+      if (payload.status === "success") return payload
+
+      throw new Error(payload.message || "Failed to fetch plan details")
     },
   })
 }

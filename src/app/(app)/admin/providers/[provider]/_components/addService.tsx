@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { TextField, TextareaField } from "@/components/form"
-import { AddButon, CancelButton, SubmitButton } from "@/components/form/button"
-import { CustomSheet } from "@/components/overlays/SideDialog"
-import { NairaIcon } from "@/components/svgs"
-import { Form } from "@/components/ui/form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Minus, Plus } from "lucide-react"
-import * as React from "react"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { TextField, TextareaField } from "@/components/form";
+import { AddButon, CancelButton, SubmitButton } from "@/components/form/button";
+import { CustomSheet } from "@/components/overlays/SideDialog";
+import { NairaIcon } from "@/components/svgs";
+import { Form } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Minus, Plus } from "lucide-react";
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const planFormSchema = z.object({
   serviceItems: z
@@ -21,60 +21,62 @@ const planFormSchema = z.object({
           .string()
           .min(1, "Cost is required")
           .refine(
-            (val) => !isNaN(Number(val)) && Number(val) >= 0,
-            "Cost must be a positive number"
+            (val) => !Number.isNaN(Number(val)) && Number(val) >= 0,
+            "Cost must be a positive number",
           ),
         utilizationLimit: z
           .string()
           .min(1, "Utilization limit is required")
           .refine(
-            (val) => !isNaN(Number(val)) && Number(val) > 0,
-            "Utilization limit must be a positive number"
+            (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+            "Utilization limit must be a positive number",
           ),
         frequencyLimit: z
           .string()
           .min(1, "Frequency limit is required")
           .refine(
-            (val) => !isNaN(Number(val)) && Number(val) > 0,
-            "Frequency limit must be a positive number"
+            (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+            "Frequency limit must be a positive number",
           ),
-      })
+      }),
     )
     .min(1, "At least one service item is required"),
-})
+});
 
-type PlanFormData = z.infer<typeof planFormSchema>
+type PlanFormData = z.infer<typeof planFormSchema>;
 
 export default function AddService() {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
   const [serviceItems, setServiceItems] = React.useState<
     Array<{
-      id: string
-      name: string
-      cost: string
-      utilizationLimit: string
-      frequencyLimit: string
+      id: string;
+      name: string;
+      cost: string;
+      utilizationLimit: string;
+      frequencyLimit: string;
     }>
-  >([{ id: "1", name: "", cost: "", utilizationLimit: "", frequencyLimit: "" }])
+  >([
+    { id: "1", name: "", cost: "", utilizationLimit: "", frequencyLimit: "" },
+  ]);
 
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planFormSchema),
     defaultValues: {
       serviceItems: serviceItems,
     },
-  })
+  });
 
   const removeServiceItem = (id: string) => {
-    const newItems = serviceItems.filter((item) => item.id !== id)
-    setServiceItems(newItems)
-    form.setValue("serviceItems", newItems)
-  }
+    const newItems = serviceItems.filter((item) => item.id !== id);
+    setServiceItems(newItems);
+    form.setValue("serviceItems", newItems);
+  };
 
   const addServiceItem = () => {
     const newId = String(
-      Math.max(...serviceItems.map((item) => Number.parseInt(item.id)), 0) + 1
-    )
+      Math.max(...serviceItems.map((item) => Number.parseInt(item.id)), 0) + 1,
+    );
     const newItems = [
       ...serviceItems,
       {
@@ -84,15 +86,15 @@ export default function AddService() {
         utilizationLimit: "",
         frequencyLimit: "",
       },
-    ]
-    setServiceItems(newItems)
-    form.setValue("serviceItems", newItems)
-  }
+    ];
+    setServiceItems(newItems);
+    form.setValue("serviceItems", newItems);
+  };
 
   const onSubmit = (data: PlanFormData) => {
-    console.log("[v0] Form submitted with data:", data)
-    alert("Plan added successfully! Check console for data.")
-  }
+    console.log("[v0] Form submitted with data:", data);
+    alert("Plan added successfully! Check console for data.");
+  };
 
   return (
     <CustomSheet
@@ -105,8 +107,8 @@ export default function AddService() {
         <div className="flex w-full items-center justify-between">
           <CancelButton
             onClick={() => {
-              form.reset()
-              setOpen(false)
+              form.reset();
+              setOpen(false);
             }}
             text="Cancel"
           />
@@ -131,7 +133,10 @@ export default function AddService() {
             {serviceItems.map((item, index) => (
               <div key={item.id} className="flex flex-col gap-4">
                 <div className="flex items-center justify-between w-full">
-                  <label className="font-hnd text-[18px]/[28px] font-bold  text-[#101828] tracking-normal">
+                  <label
+                    htmlFor="service"
+                    className="font-hnd text-[18px]/[28px] font-bold  text-[#101828] tracking-normal"
+                  >
                     Service {index + 1}
                   </label>
                   {serviceItems.length > 1 && (
@@ -163,6 +168,7 @@ export default function AddService() {
                   placeholder="Enter amount"
                   type="number"
                   step="0.01"
+                  min={0}
                   rightAdornment={<NairaIcon />}
                 />
 
@@ -173,6 +179,7 @@ export default function AddService() {
                     label="Utilization Limit"
                     placeholder="Enter amount"
                     type="number"
+                    min={0}
                     rightAdornment={<NairaIcon />}
                   />
                   <TextField
@@ -181,6 +188,7 @@ export default function AddService() {
                     label="Frequency Limit"
                     placeholder="1, 2, ...."
                     type="number"
+                    min={0}
                     rightAdornment={
                       <span className="italic text-[16px]/[24px] text-[#667085]">
                         per Year
@@ -206,5 +214,5 @@ export default function AddService() {
         </form>
       </Form>
     </CustomSheet>
-  )
+  );
 }

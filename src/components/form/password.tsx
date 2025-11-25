@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   FormControl,
@@ -6,25 +6,25 @@ import {
   FormField,
   FormItem,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import type { ComponentProps } from "react"
-import * as React from "react"
-import { Control, FieldPath, FieldValues } from "react-hook-form"
-import Label from "./label"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
+import type { Control, FieldPath, FieldValues } from "react-hook-form";
+import Label from "./label";
 
 type BaseProps<TFieldValues extends FieldValues> = {
-  control: Control<TFieldValues>
-  name: FieldPath<TFieldValues>
-  label?: React.ReactNode
-  description?: React.ReactNode
-  className?: string
-  inputClassName?: string
+  control: Control<TFieldValues>;
+  name: FieldPath<TFieldValues>;
+  label?: ReactNode;
+  description?: ReactNode;
+  className?: string;
+  inputClassName?: string;
 } & Omit<
   ComponentProps<"input">,
   "name" | "defaultValue" | "onChange" | "value"
->
+>;
 
 export function PasswordField<TFieldValues extends FieldValues>({
   control,
@@ -36,7 +36,7 @@ export function PasswordField<TFieldValues extends FieldValues>({
   ...inputProps
 }: BaseProps<TFieldValues>) {
   // const [show, setShow] = React.useState(false)
-  const inputId = inputProps.id ?? String(name)
+  const inputId = inputProps.id ?? String(name);
 
   return (
     <FormField
@@ -80,5 +80,5 @@ export function PasswordField<TFieldValues extends FieldValues>({
         </FormItem>
       )}
     />
-  )
+  );
 }

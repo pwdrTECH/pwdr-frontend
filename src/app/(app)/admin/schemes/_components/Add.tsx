@@ -404,6 +404,7 @@ export default function AddPlanForm() {
             placeholder="Enter premium amount"
             type="number"
             step="0.01"
+            min={0}
             rightAdornment={<NairaIcon />}
           />
           <TextField
@@ -413,6 +414,7 @@ export default function AddPlanForm() {
             placeholder="Enter amount"
             type="number"
             step="0.01"
+            min={0}
             rightAdornment={<NairaIcon />}
           />
           <TextField
@@ -421,6 +423,7 @@ export default function AddPlanForm() {
             label="Days to Activate"
             placeholder="e.g. 7"
             type="number"
+            min={0}
           />
 
           {/* Service Items */}
@@ -472,6 +475,7 @@ export default function AddPlanForm() {
                   placeholder="Enter amount"
                   type="number"
                   step="0.01"
+                  min={0}
                   rightAdornment={<NairaIcon />}
                 />
 
@@ -482,6 +486,7 @@ export default function AddPlanForm() {
                     label="Utilization Limit"
                     placeholder="Enter amount"
                     type="number"
+                    min={0}
                     rightAdornment={<NairaIcon />}
                   />
                   <TextField
@@ -490,6 +495,7 @@ export default function AddPlanForm() {
                     label="Frequency Limit"
                     placeholder="1, 2, ...."
                     type="number"
+                    min={0}
                     rightAdornment={
                       <span className="italic text-[16px]/[24px] text-[#667085]">
                         per Year

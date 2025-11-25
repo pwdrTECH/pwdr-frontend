@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { z } from "zod"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { X, Minus, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { TextField, TextareaField, type SelectOption } from "@/components/form"
-import { Form } from "@/components/ui/form"
-import { CustomSheet } from "@/components/overlays/SideDialog"
-import { EditIcon, NairaIcon } from "@/components/svgs"
+import * as React from "react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { X, Minus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TextField, TextareaField, type SelectOption } from "@/components/form";
+import { Form } from "@/components/ui/form";
+import { CustomSheet } from "@/components/overlays/SideDialog";
+import { EditIcon, NairaIcon } from "@/components/svgs";
 import {
   Select,
   SelectContent,
@@ -17,8 +17,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { SubmitButton, CancelButton } from "@/components/form/button"
+} from "@/components/ui/select";
+import { SubmitButton, CancelButton } from "@/components/form/button";
 
 const planFormSchema = z.object({
   planName: z
@@ -30,22 +30,22 @@ const planFormSchema = z.object({
     .string()
     .min(1, "Premium is required")
     .refine(
-      (val) => !isNaN(Number(val)) && Number(val) > 0,
-      "Premium must be a positive number"
+      (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+      "Premium must be a positive number",
     ),
   threshold: z
     .string()
     .min(1, "Utilization threshold is required")
     .refine(
-      (val) => !isNaN(Number(val)) && Number(val) > 0,
-      "Threshold must be a positive number"
+      (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+      "Threshold must be a positive number",
     ),
   daysToActivate: z
     .string()
     .min(1, "Days to activate is required")
     .refine(
-      (val) => !isNaN(Number(val)) && Number(val) > 0,
-      "Days must be a positive number"
+      (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+      "Days must be a positive number",
     ),
   serviceItems: z
     .array(
@@ -56,88 +56,90 @@ const planFormSchema = z.object({
           .string()
           .min(1, "Cost is required")
           .refine(
-            (val) => !isNaN(Number(val)) && Number(val) >= 0,
-            "Cost must be a positive number"
+            (val) => !Number.isNaN(Number(val)) && Number(val) >= 0,
+            "Cost must be a positive number",
           ),
         utilizationLimit: z
           .string()
           .min(1, "Utilization limit is required")
           .refine(
-            (val) => !isNaN(Number(val)) && Number(val) > 0,
-            "Utilization limit must be a positive number"
+            (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+            "Utilization limit must be a positive number",
           ),
         frequencyLimit: z
           .string()
           .min(1, "Frequency limit is required")
           .refine(
-            (val) => !isNaN(Number(val)) && Number(val) > 0,
-            "Frequency limit must be a positive number"
+            (val) => !Number.isNaN(Number(val)) && Number(val) > 0,
+            "Frequency limit must be a positive number",
           ),
-      })
+      }),
     )
     .min(1, "At least one service item is required"),
-})
+});
 
-type PlanFormData = z.infer<typeof planFormSchema>
+type PlanFormData = z.infer<typeof planFormSchema>;
 
-const ALL_SCHEMES = ["NHIS", "PHIS", "TSHIP", "NYSC"]
+const ALL_SCHEMES = ["NHIS", "PHIS", "TSHIP", "NYSC"];
 
-export default function EditPlanForm() {
-  const [open, setOpen] = React.useState(false)
+export default function EditPlanForm({ plan }: any) {
+  const [open, setOpen] = React.useState(false);
   const [selectedSchemes, setSelectedSchemes] = React.useState<string[]>([
     "NHIS",
     "PHIS",
     "TSHIP",
     "NYSC",
-  ])
-  const [schemeSelector, setSchemeSelector] = React.useState<string>("")
+  ]);
+  const [schemeSelector, setSchemeSelector] = React.useState<string>("");
   const [serviceItems, setServiceItems] = React.useState<
     Array<{
-      id: string
-      name: string
-      cost: string
-      utilizationLimit: string
-      frequencyLimit: string
+      id: string;
+      name: string;
+      cost: string;
+      utilizationLimit: string;
+      frequencyLimit: string;
     }>
-  >([{ id: "1", name: "", cost: "", utilizationLimit: "", frequencyLimit: "" }])
+  >([
+    { id: "1", name: "", cost: "", utilizationLimit: "", frequencyLimit: "" },
+  ]);
 
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planFormSchema),
     defaultValues: {
-      planName: "",
+      planName: plan?.name || "",
       schemes: selectedSchemes,
-      premium: "",
-      threshold: "",
-      daysToActivate: "",
+      premium: plan?.premium ? String(plan?.premium) : "",
+      threshold: plan?.utilization ? String(plan?.utilization) : "",
+      daysToActivate: plan?.waitDays ? String(plan?.waitDays) : "",
       serviceItems: serviceItems,
     },
-  })
+  });
 
   const handleSchemeSelect = (scheme: string) => {
     if (!selectedSchemes.includes(scheme)) {
-      const newSchemes = [...selectedSchemes, scheme]
-      setSelectedSchemes(newSchemes)
-      form.setValue("schemes", newSchemes)
+      const newSchemes = [...selectedSchemes, scheme];
+      setSelectedSchemes(newSchemes);
+      form.setValue("schemes", newSchemes);
     }
-    setSchemeSelector("")
-  }
+    setSchemeSelector("");
+  };
 
   const removeScheme = (scheme: string) => {
-    const newSchemes = selectedSchemes.filter((s) => s !== scheme)
-    setSelectedSchemes(newSchemes)
-    form.setValue("schemes", newSchemes)
-  }
+    const newSchemes = selectedSchemes.filter((s) => s !== scheme);
+    setSelectedSchemes(newSchemes);
+    form.setValue("schemes", newSchemes);
+  };
 
   const removeServiceItem = (id: string) => {
-    const newItems = serviceItems.filter((item) => item.id !== id)
-    setServiceItems(newItems)
-    form.setValue("serviceItems", newItems)
-  }
+    const newItems = serviceItems.filter((item) => item.id !== id);
+    setServiceItems(newItems);
+    form.setValue("serviceItems", newItems);
+  };
 
   const addServiceItem = () => {
     const newId = String(
-      Math.max(...serviceItems.map((item) => Number.parseInt(item.id)), 0) + 1
-    )
+      Math.max(...serviceItems.map((item) => Number.parseInt(item.id)), 0) + 1,
+    );
     const newItems = [
       ...serviceItems,
       {
@@ -147,20 +149,20 @@ export default function EditPlanForm() {
         utilizationLimit: "",
         frequencyLimit: "",
       },
-    ]
-    setServiceItems(newItems)
-    form.setValue("serviceItems", newItems)
-  }
+    ];
+    setServiceItems(newItems);
+    form.setValue("serviceItems", newItems);
+  };
 
   const onSubmit = (data: PlanFormData) => {
-    console.log("[v0] Form submitted with data:", data)
-    alert("Plan updated successfully! Check console for data.")
-  }
+    console.log("[v0] Form submitted with data:", data);
+    alert("Plan updated successfully! Check console for data.");
+  };
 
   const schemeOptions: SelectOption[] = ALL_SCHEMES.map((scheme) => ({
     value: scheme,
     label: scheme,
-  }))
+  }));
 
   return (
     <CustomSheet
@@ -182,8 +184,8 @@ export default function EditPlanForm() {
         <div className="flex w-full items-center justify-between">
           <CancelButton
             onClick={() => {
-              form.reset()
-              setOpen(false)
+              form.reset();
+              setOpen(false);
             }}
             text="Cancel"
           />
@@ -219,7 +221,10 @@ export default function EditPlanForm() {
           />
           <div className="space-y-2">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-900">
+              <label
+                htmlFor="scheme"
+                className="text-sm font-medium text-gray-900"
+              >
                 Scheme
               </label>
               <Select value={schemeSelector} onValueChange={handleSchemeSelect}>
@@ -273,6 +278,7 @@ export default function EditPlanForm() {
             placeholder="Enter premium amount"
             type="number"
             step="0.01"
+            min={0}
             rightAdornment={<NairaIcon />}
           />
 
@@ -283,6 +289,7 @@ export default function EditPlanForm() {
             placeholder="Enter amount"
             type="number"
             step="0.01"
+            min={0}
             rightAdornment={<NairaIcon />}
           />
 
@@ -291,6 +298,7 @@ export default function EditPlanForm() {
             name="daysToActivate"
             label="Days to Activate"
             placeholder="eg. 7 Days"
+            min={0}
             type="number"
           />
 
@@ -308,7 +316,10 @@ export default function EditPlanForm() {
             {serviceItems.map((item, index) => (
               <div key={item.id} className="flex flex-col gap-4">
                 <div className="flex items-center justify-between w-full">
-                  <label className="font-hnd text-[18px]/[28px] font-bold  text-[#101828] tracking-normal">
+                  <label
+                    htmlFor="service"
+                    className="font-hnd text-[18px]/[28px] font-bold  text-[#101828] tracking-normal"
+                  >
                     Service {index + 1}
                   </label>
                   {serviceItems.length > 1 && (
@@ -339,6 +350,7 @@ export default function EditPlanForm() {
                   label="Cost"
                   placeholder="Enter amount"
                   type="number"
+                  min={0}
                   step="0.01"
                   rightAdornment={<NairaIcon />}
                 />
@@ -350,6 +362,7 @@ export default function EditPlanForm() {
                     label="Utilization Limit"
                     placeholder="Enter amount"
                     type="number"
+                    min={0}
                     rightAdornment={<NairaIcon />}
                   />
                   <TextField
@@ -358,6 +371,7 @@ export default function EditPlanForm() {
                     label="Frequency Limit"
                     placeholder="1, 2, ...."
                     type="number"
+                    min={0}
                     rightAdornment={
                       <span className="italic text-[16px]/[24px] text-[#667085]">
                         per Year
@@ -383,5 +397,5 @@ export default function EditPlanForm() {
         </form>
       </Form>
     </CustomSheet>
-  )
+  );
 }
