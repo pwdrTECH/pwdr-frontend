@@ -1,21 +1,23 @@
 "use client";
 
 import { CheckboxGroup, SelectField, TextField } from "@/components/form";
-import { AddButon, CancelButton, SubmitButton } from "@/components/form/button";
+import { CancelButton, SubmitButton } from "@/components/form/button";
 import { ConfirmPopover } from "@/components/overlays/ConfirmPopover";
 import { CustomSheet } from "@/components/overlays/SideDialog";
+import { EditAltIcon } from "@/components/svgs";
+import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import {
   NIGERIA_STATES_AND_LGAS,
   STATES,
   getLgasByStateId,
 } from "@/lib/nigeria-lga";
+import { useEditProvider } from "@/lib/api/provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useCreateProvider, type NewProviderPayload } from "@/lib/api/provider";
 
 const SCHEMES = ["NHIS", "PHIS", "TSHIP"] as const;
 
@@ -31,23 +33,49 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export default function AddProvider() {
+export interface EditableProvider {
+  id: string | number;
+  name: string;
+  adminEmail?: string;
+  adminPhone?: string;
+  street?: string;
+  stateId?: number | null;
+  stateName?: string;
+  lga?: string;
+  schemes?: string[];
+}
+
+interface EditProviderProps {
+  provider: EditableProvider;
+}
+
+export default function EditProvider({ provider }: EditProviderProps) {
   const [open, setOpen] = React.useState(false);
-  const createProvider = useCreateProvider();
+  const editProvider = useEditProvider();
+
+  const initialValues: FormValues = React.useMemo(
+    () => ({
+      name: provider.name ?? "",
+      adminEmail: provider.adminEmail ?? "",
+      adminPhone: provider.adminPhone ?? "",
+      street: provider.street ?? "",
+      state: provider.stateId ? String(provider.stateId) : "",
+      lga: provider.lga ?? "",
+      schemes: provider.schemes ?? [],
+    }),
+    [provider],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      name: "",
-      adminEmail: "",
-      adminPhone: "",
-      street: "",
-      state: "",
-      lga: "",
-      schemes: [],
-    },
+    defaultValues: initialValues,
     mode: "onSubmit",
   });
+
+  // Keep form in sync when the provider prop changes
+  React.useEffect(() => {
+    form.reset(initialValues);
+  }, [initialValues, form]);
 
   const selectedState = useWatch({
     control: form.control,
@@ -57,7 +85,7 @@ export default function AddProvider() {
   const setValue = form.setValue;
 
   React.useEffect(() => {
-    if (selectedState !== undefined) {
+    if (selectedState) {
       setValue("lga", "", { shouldDirty: true });
     }
   }, [selectedState, setValue]);
@@ -83,34 +111,50 @@ export default function AddProvider() {
   const onSubmit = async (values: FormValues) => {
     const stateId = Number.parseInt(values.state, 10);
 
-    const payload: NewProviderPayload = {
+    const payload = {
+      provider_id: String(provider.id),
+      phone: values.adminPhone,
+      address: `${values.street}, ${values.lga}, ${
+        NIGERIA_STATES_AND_LGAS[stateId]?.name ?? "Unknown State"
+      }`,
+      // optional extras (your PHP can ignore what it doesn’t need)
       name: values.name,
-      admin_email: values.adminEmail,
-      admin_phone: values.adminPhone,
-      street: values.street,
       state_id: stateId,
-      state_name: NIGERIA_STATES_AND_LGAS[stateId]?.name ?? "Unknown State",
       lga: values.lga,
       schemes: values.schemes,
+      admin_email: values.adminEmail,
     };
 
     try {
-      await createProvider.mutateAsync(payload);
-      toast.success("Provider created successfully");
-      form.reset();
+      await editProvider.mutateAsync(payload);
+      toast.success("Provider updated successfully");
       setOpen(false);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to create provider");
+      toast.error("Failed to update provider", {
+        description: err?.message ?? "Please try again.",
+      });
     }
   };
 
-  const isSubmitting = form.formState.isSubmitting || createProvider.isPending;
+  const handleCancel = () => {
+    form.reset(initialValues);
+    setOpen(false);
+  };
+
+  const isSubmitting = form.formState.isSubmitting || editProvider.isPending;
 
   return (
     <CustomSheet
-      title="Add Provider"
-      subtitle="Create a profile for a partner provider"
-      trigger={<AddButon text=" Add Provider" />}
+      title="Edit Provider"
+      subtitle="Update provider profile"
+      trigger={
+        <Button
+          variant="outline"
+          className="w-full h-10 rounded-xl border-0 py-2.5 px-3.5 flex justify-start items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
+        >
+          <EditAltIcon /> Edit Profile
+        </Button>
+      }
       open={open}
       onOpenChange={(isOpen) => {
         if (!isSubmitting) setOpen(isOpen);
@@ -123,10 +167,7 @@ export default function AddProvider() {
             title="Cancel Form?"
             confirmText="Yes, Cancel"
             trigger={<CancelButton text="Cancel" />}
-            onConfirm={() => {
-              form.reset();
-              setOpen(false);
-            }}
+            onConfirm={handleCancel}
             description={
               <p className="font-hnd font-normal text-[#667085] text-[16px]/[24px] tracking-normal space-y-2">
                 You&apos;re attempting to cancel this form. Doing so will
@@ -138,7 +179,7 @@ export default function AddProvider() {
             }
           />
           <SubmitButton formId="provider-form" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Add"}
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </SubmitButton>
         </div>
       }
@@ -162,7 +203,7 @@ export default function AddProvider() {
               control={form.control}
               name="adminEmail"
               label="Admin Email"
-              placeholder="admin@hmo.com"
+              placeholder="admin@provider.com"
               inputClassName="h-10"
               type="email"
             />

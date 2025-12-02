@@ -1,13 +1,37 @@
 "use client"
 
 import { apiClient } from "@/lib/api/client"
-import type { EnrolleeApiResponse } from "@/lib/api/types"
+import type { EnrolleeApiResponse, SimpleApiResponse } from "@/lib/api/types"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+
+/* ============================
+    Helpers
+============================ */
+
+function base64ToJpegBlob(dataUrl: string): Blob {
+  // Handles both "data:image/jpeg;base64,..." and raw base64 strings
+  const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl
+  const byteCharacters = atob(base64)
+  const byteNumbers = new Array(byteCharacters.length)
+
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i)
+  }
+
+  const byteArray = new Uint8Array(byteNumbers)
+  // Explicit cast keeps TS happy with BlobPart[]
+  return new Blob([byteArray] as BlobPart[], { type: "image/jpeg" })
+}
+
+/* ============================
+    Types
+============================ */
 
 export interface EnrolleeDetailsRequest {
   id?: string | number
   enrolee_id?: string
 }
+
 export interface EnrolleeDetailsResponse {
   status: string
   data: any
@@ -20,11 +44,26 @@ export interface BeneficiaryFilters {
   limit?: number
   search?: string
 }
-export interface BeneficiaryFilters {
-  page?: number
-  limit?: number
-  search?: string
+
+export interface DeleteEnrolleePayload {
+  enrolee_id: string
 }
+
+export interface EditEnrolleePayload {
+  enrolee_id: string
+  phone?: string
+  address?: string
+  plan_id?: number
+  active?: number | 0 | 1
+  [key: string]: any
+}
+
+export interface EditEnrolleeApiResponse {
+  status: string // "success" | "error" | ...
+  message?: string
+  data?: any
+}
+
 export interface EnrolleeDetail {
   id: number
   email: string | null
@@ -70,6 +109,7 @@ export interface EnrolleeDetailsApiResponse {
   data?: EnrolleeDetail
   message?: string
 }
+
 export interface RawBeneficiary {
   id: number
   email: string | null
@@ -141,6 +181,21 @@ export interface CreateEnrolleePayload {
   passport_image?: string
 }
 
+/* ========= New payload types ========= */
+
+export interface ActivateEnrolleePayload {
+  enrolee_id: string
+}
+
+export interface ChangeEnrolleePlanPayload {
+  enrolee_id: string
+  plan_id: number
+}
+
+/* ============================
+    Create Enrollee
+============================ */
+
 export function useCreateEnrollee() {
   const queryClient = useQueryClient()
 
@@ -149,30 +204,11 @@ export function useCreateEnrollee() {
       payload: CreateEnrolleePayload
     ): Promise<EnrolleeApiResponse> => {
       const formData = new FormData()
+
       Object.entries(payload).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          if (key === "passport_image" && value) {
-            const base64Data = value.split(",")[1]
-            const byteCharacters = atob(base64Data)
-            const byteArrays = []
-
-            for (
-              let offset = 0;
-              offset < byteCharacters.length;
-              offset += 512
-            ) {
-              const slice = byteCharacters.slice(offset, offset + 512)
-              const byteNumbers = new Array(slice.length)
-
-              for (let i = 0; i < slice.length; i++) {
-                byteNumbers[i] = slice.charCodeAt(i)
-              }
-
-              const byteArray = new Uint8Array(byteNumbers)
-              byteArrays.push(byteArray)
-            }
-
-            const blob = new Blob(byteArrays, { type: "image/jpeg" })
+          if (key === "passport_image" && typeof value === "string" && value) {
+            const blob = base64ToJpegBlob(value)
             formData.append("passport_image", blob, "passport.jpg")
           } else {
             formData.append(key, String(value))
@@ -194,19 +230,24 @@ export function useCreateEnrollee() {
       return apiResponse
     },
     onSuccess: () => {
+      // Keep both keys in sync, in case different lists use different hooks
       queryClient.invalidateQueries({ queryKey: ["enrollees"] })
+      queryClient.invalidateQueries({ queryKey: ["beneficiaries"] })
     },
   })
 }
+
+/* ============================
+    List Beneficiaries
+============================ */
 
 export function useBeneficiaries(filters: BeneficiaryFilters = {}) {
   return useQuery({
     queryKey: ["beneficiaries", filters],
     queryFn: async () => {
-      // For now: fetch *many* and let UI paginate on client
       const body = {
         page: filters.page ?? 1,
-        limit: filters.limit ?? 500, // big enough to cover all
+        limit: filters.limit ?? 500,
         search: filters.search ?? "",
       }
 
@@ -219,6 +260,10 @@ export function useBeneficiaries(filters: BeneficiaryFilters = {}) {
     },
   })
 }
+
+/* ============================
+    Enrollee Details
+============================ */
 
 export function useEnrolleeDetails(params: EnrolleeDetailsRequest) {
   return useQuery({
@@ -246,11 +291,167 @@ export function useEnrolleeDetails(params: EnrolleeDetailsRequest) {
       }
 
       if (payload.status === "empty") {
-        // no record but not an error
         return null
       }
 
       throw new Error(payload.message || "Failed to fetch enrollee details")
+    },
+  })
+}
+
+/* ============================
+    Activate Enrollee
+    POST /activate-enrolee.php
+============================ */
+
+export function useActivateEnrollee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: ActivateEnrolleePayload
+    ): Promise<EnrolleeApiResponse> => {
+      const res = await apiClient.post<EnrolleeApiResponse>(
+        "/activate-enrolee.php",
+        payload
+      )
+
+      const apiResponse = res.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        throw new Error(apiResponse?.message || "Failed to activate enrollee")
+      }
+
+      return apiResponse
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["enrollees"] })
+      queryClient.invalidateQueries({
+        queryKey: ["enrollee-details", { enrolee_id: variables.enrolee_id }],
+      })
+    },
+  })
+}
+
+/* ============================
+    Change Enrollee Plan
+    POST /change-enrolee-plan.php
+============================ */
+
+export function useChangeEnrolleePlan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: ChangeEnrolleePlanPayload
+    ): Promise<EnrolleeApiResponse> => {
+      const res = await apiClient.post<EnrolleeApiResponse>(
+        "/change-enrolee-plan.php",
+        payload
+      )
+
+      const apiResponse = res.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        throw new Error(
+          apiResponse?.message || "Failed to change enrollee plan"
+        )
+      }
+
+      return apiResponse
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["enrollees"] })
+      queryClient.invalidateQueries({
+        queryKey: ["enrollee-details", { enrolee_id: variables.enrolee_id }],
+      })
+    },
+  })
+}
+
+/* ============================
+    Edit Enrollee (multipart)
+    POST /edit-enrolee.php
+============================ */
+
+export function useEditEnrollee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: EditEnrolleePayload
+    ): Promise<EditEnrolleeApiResponse> => {
+      const formData = new FormData()
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (key === "passport_image" && typeof value === "string" && value) {
+            const blob = base64ToJpegBlob(value)
+            formData.append("passport_image", blob, "passport.jpg")
+          } else {
+            formData.append(key, String(value))
+          }
+        }
+      })
+
+      const res = await apiClient.upload<EditEnrolleeApiResponse>(
+        "/edit-enrolee.php",
+        formData
+      )
+
+      const apiResponse = res.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        throw new Error(apiResponse?.message || "Failed to edit enrollee")
+      }
+
+      return apiResponse
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["beneficiaries"] })
+
+      if (variables.enrolee_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["enrollee-details", { enrolee_id: variables.enrolee_id }],
+        })
+      }
+    },
+  })
+}
+
+/* ============================
+    Delete Enrollee
+    POST /delete-enrolee.php
+============================ */
+
+export function useDeleteEnrollee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: DeleteEnrolleePayload
+    ): Promise<SimpleApiResponse> => {
+      const res = await apiClient.post<SimpleApiResponse>(
+        "/delete-enrolee.php",
+        payload
+      )
+
+      const apiResponse = res.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        throw new Error(apiResponse?.message || "Failed to delete enrollee")
+      }
+
+      return apiResponse
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["beneficiaries"] })
+
+      if (variables.enrolee_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["enrollee-details", { enrolee_id: variables.enrolee_id }],
+        })
+      }
     },
   })
 }

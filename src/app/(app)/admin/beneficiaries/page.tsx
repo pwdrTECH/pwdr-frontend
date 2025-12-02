@@ -112,10 +112,7 @@ export default function BeneficiariesPage() {
             : "₦0";
 
       // Utilization %
-      const utilization =
-        Number(
-          item.utilization ?? item.utilization_percent ?? item.utilization_used,
-        ) || 0;
+      const utilization = Number(item.utilization) || 0;
 
       // Status (normalize to our StatusValue if possible)
       const statusRaw = String(item.status ?? "").toLowerCase();

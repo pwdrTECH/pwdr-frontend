@@ -11,7 +11,7 @@ export function CancelButton({
   disabled,
   onClick,
   className,
-  text,
+  text = "Cancel",
 }: CancelButtonProps) {
   return (
     <Button

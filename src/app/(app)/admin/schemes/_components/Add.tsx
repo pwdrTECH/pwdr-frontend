@@ -193,16 +193,7 @@ export default function AddPlanForm() {
 
   const onSubmit = async (data: PlanFormData) => {
     try {
-      // Backend expects:
-      // {
-      //   "scheme_id": 1,
-      //   "name": "Gold",
-      //   "premium": "150000",
-      //   "utilization_threshold": "80",
-      //   "days_to_activate": "7",
-      //   "services": [ ... ]
-      // }
-      const primarySchemeId = Number(data.schemes[0]); // use first selected scheme
+      const primarySchemeId = Number(data.schemes[0]);
 
       const payload = {
         scheme_id: primarySchemeId,
@@ -211,7 +202,6 @@ export default function AddPlanForm() {
         utilization_threshold: data.threshold,
         days_to_activate: data.daysToActivate,
         services: data.serviceItems.map((item) => ({
-          // if you have real HMO ID from auth, plug it here instead
           hmo_id: primarySchemeId,
           name: item.name,
           cost: item.cost,
@@ -222,8 +212,6 @@ export default function AddPlanForm() {
           deleted: 0,
         })),
       };
-
-      // Call the real API
       await createPlan.mutateAsync(payload as any);
 
       toast.success("Plan created successfully");

@@ -7,8 +7,11 @@ import { CustomSheet } from "@/components/overlays/SideDialog";
 import { EditAltIcon, UploadFile } from "@/components/svgs";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { useCreateEnrollee } from "@/lib/api/beneficiaries";
-import type { EnrolleeDetail } from "@/lib/api/beneficiaries";
+import type {
+  EnrolleeDetail,
+  EditEnrolleePayload,
+} from "@/lib/api/beneficiaries";
+import { useEditEnrollee } from "@/lib/api/beneficiaries";
 import { usePlansByScheme, useSchemes } from "@/lib/api/schemes";
 import { getLgasByStateId, STATES } from "@/lib/nigeria-lga";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -91,7 +94,7 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
   const [dependentImage, setDependentImage] = useState<string | null>(null);
 
   const { data: schemes } = useSchemes();
-  const createEnrollee = useCreateEnrollee();
+  const editEnrollee = useEditEnrollee();
 
   // Small helper: split address into "houseNumber" + "street" best-effort
   let defaultHouseNumber = "";
@@ -124,8 +127,7 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
       email: enrollee?.email ?? "",
 
       // Enrollee Plan & Scheme
-      // (we only have plan_id + plan_name; scheme_id not in payload yet)
-      scheme: "",
+      scheme: "", // if you later get scheme_id, prefill here
       plan: enrollee?.plan_id ? String(enrollee.plan_id) : "",
 
       // Additional Info
@@ -224,46 +226,43 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
   };
 
   const onSubmit = async (values: EnrolleeFormValues) => {
+    if (!enrollee?.enrolee_id) {
+      toast.error("Missing enrollee ID");
+      return;
+    }
+
     try {
       console.log("Submitting enrollee data:", values);
 
-      const payload = {
+      const payload: EditEnrolleePayload = {
+        enrolee_id: enrollee.enrolee_id,
+        phone: values.mobile,
+        address: `${values.houseNumber}, ${values.street}`,
+        plan_id: Number(values.plan),
+        active: enrollee.active,
+
+        // Extra useful fields (backend can ignore unknown keys if not needed)
         email: values.email,
-        first_name: values.firstName,
-        surname: values.surname,
-        other_names: values.otherName || "",
         gender: values.gender,
         dob: values.dateOfBirth,
-        address: `${values.houseNumber}, ${values.street}`,
-        city: values.lga,
+        marital_status: values.maritalStatus || undefined,
+        employment_status: values.employmentStatus || undefined,
+        occupation: values.occupation || undefined,
+        user_role: values.userRole || undefined,
         state: values.state,
-        phone: values.mobile,
-        marital_status: values.maritalStatus || "Single",
-        origin_state: values.state,
-        origin_lga: values.lga,
-        employment_status: values.employmentStatus || "Employed",
-        occupation: values.occupation || "Not specified",
-        user_role: values.userRole || "principal",
-        principal_id: enrollee?.principal_id ?? null,
-        plan_id: Number(values.plan),
-        next_of_kin: values.nokFullName || "Not specified",
-        next_of_kin_relationship: enrollee?.next_of_kin_relationship ?? "Other",
-        next_of_kin_phone: values.nokMobile || "Not specified",
-        next_of_kin_address: values.nokStreet || "Not specified",
+        city: values.lga,
+        next_of_kin: values.nokFullName || undefined,
+        next_of_kin_phone: values.nokMobile || undefined,
+        next_of_kin_address: values.nokStreet || undefined,
         passport_image: values.passportImage || undefined,
-        // If your backend supports "update" vs "create", you might also send enrollee?.id
-        // id: enrollee?.id,
       };
 
-      console.log("API Payload:", payload);
-
-      const result = await createEnrollee.mutateAsync(payload);
-      console.log("Enrollee saved successfully:", result);
+      await editEnrollee.mutateAsync(payload);
 
       handleCancel();
-      toast.success("Enrollee saved successfully!");
+      toast.success("Enrollee updated successfully!");
     } catch (error: any) {
-      console.error("Error saving enrollee:", error);
+      console.error("Error editing enrollee:", error);
 
       if (error.response?.data?.errors) {
         const serverErrors = error.response.data.errors;
@@ -299,15 +298,15 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
           type: "server",
           message: error.response.data.message,
         });
-        toast.error("Failed to save enrollee", {
+        toast.error("Failed to update enrollee", {
           description: error.response.data.message,
         });
       } else {
         form.setError("root", {
           type: "server",
-          message: error.message || "Failed to save enrollee",
+          message: error.message || "Failed to update enrollee",
         });
-        toast.error("Failed to save enrollee", {
+        toast.error("Failed to update enrollee", {
           description:
             error.message || "Please check your connection and try again.",
         });
@@ -373,7 +372,7 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
       trigger={
         <Button
           variant="outline"
-          className="h-10 rounded-xl border border-[#D0D5DD] py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
+          className="w-full h-10 justify-start rounded-xl border-0 py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
         >
           <EditAltIcon /> Edit Profile
         </Button>
@@ -401,9 +400,9 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
           />
           <SubmitButton
             formId="enrollee-form"
-            disabled={form.formState.isSubmitting || createEnrollee.isPending}
+            disabled={form.formState.isSubmitting || editEnrollee.isPending}
           >
-            {form.formState.isSubmitting || createEnrollee.isPending
+            {form.formState.isSubmitting || editEnrollee.isPending
               ? "Saving..."
               : "Save Changes"}
           </SubmitButton>

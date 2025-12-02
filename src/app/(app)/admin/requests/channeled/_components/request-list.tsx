@@ -1,82 +1,26 @@
-"use client"
+"use client";
 
-import { GmailIcon, WhatsAppIcon } from "@/components/svgs"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { GmailIcon, WhatsAppIcon } from "@/components/svgs";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
-import { Search } from "lucide-react"
-import * as React from "react"
-import type { RequestItem } from "./types"
-import { STATUS_BADGE, STATUS_LABEL } from "./types"
-
-const requestsData: RequestItem[] = [
-  {
-    id: "1",
-    name: "Muhammad Sahab",
-    organization: "Songhai Health Trust - Principal",
-    provider: "email",
-    status: "read",
-    timestamp: "12/10/23 · 9:32AM",
-    requestStatus: "overdue",
-  },
-  {
-    id: "2",
-    name: "Linda Eseyin",
-    organization: "Reliance HMO",
-    provider: "whatsapp",
-    status: "read",
-    timestamp: "12/10/23 · 9:32AM",
-    requestStatus: "in_review",
-  },
-  {
-    id: "3",
-    name: "Joseph Jibril",
-    organization: "Hygeia HMO",
-    provider: "whatsapp",
-    status: "new",
-    timestamp: "12/10/23 · 9:32AM",
-    requestStatus: "pending",
-  },
-  {
-    id: "4",
-    name: "Chisom Chika",
-    organization: "Reliance HMO - Dependent",
-    provider: "whatsapp",
-    status: "read",
-    timestamp: "12/10/23 · 9:32AM",
-    requestStatus: "resolved",
-  },
-  {
-    id: "5",
-    name: "Hafsat Woru",
-    organization: "Hygeia HMO",
-    provider: "email",
-    status: "new",
-    timestamp: "12/10/23 · 9:32AM",
-    requestStatus: "pending",
-  },
-  {
-    id: "6",
-    name: "Kabir Suru",
-    organization: "Reliance HMO - Dependent",
-    provider: "whatsapp",
-    status: "read",
-    timestamp: "12/10/23 · 9:32AM",
-    requestStatus: "pending",
-  },
-]
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import * as React from "react";
+import type { RequestItem } from "./types";
+import { STATUS_BADGE, STATUS_LABEL } from "./types";
+import { useRequests } from "@/lib/api/requests";
 
 interface RequestListProps {
-  onSelectRequest?: (request: RequestItem) => void
-  selectedRequestId?: string
+  onSelectRequest?: (request: RequestItem) => void;
+  selectedRequestId?: string;
 }
 
 export function RequestList({
@@ -85,36 +29,88 @@ export function RequestList({
 }: RequestListProps) {
   const [activeTab, setActiveTab] = React.useState<
     "all" | "unread" | "overdue" | "resolved"
-  >("all")
-  const [searchTerm, setSearchTerm] = React.useState("")
+  >("all");
+  const [searchTerm, setSearchTerm] = React.useState("");
   const [channel, setChannel] = React.useState<
     "all" | "email" | "whatsapp" | "chat"
-  >("all")
+  >("all");
+
+  const { data, isLoading, error } = useRequests({
+    search: searchTerm,
+    channel,
+    status: activeTab,
+    page: 1,
+    limit: 20,
+  });
+
+  // Map API response → RequestItem (from your sample payload)
+  const baseRequests: RequestItem[] = React.useMemo(() => {
+    const apiItems = data?.data ?? [];
+    return apiItems.map((r: any) => {
+      // Your payload has channel: "hospital" (this is NOT email/whatsapp),
+      // so for UI we just force it to "email" for now so you get a consistent icon
+      const provider: RequestItem["provider"] = "email";
+
+      // Use processed flag as "read" vs "new"
+      const status: RequestItem["status"] =
+        Number(r.processed) === 1 ? "read" : "new";
+
+      // All from API are currently "pending"; later you can map other values
+      const requestStatus: RequestItem["requestStatus"] =
+        (r.status?.toLowerCase() as RequestItem["requestStatus"]) || "pending";
+
+      // Name & organization from payload
+      const name = `${r.enrolee_first_name ?? ""} ${
+        r.enrolee_surname ?? ""
+      }`.trim();
+
+      const organization = r.provider_name || r.plan_name || r.channel || "—";
+
+      // Timestamp: for now just use encounter_date (or date_created if you later format the unix)
+      const timestamp = r.encounter_date || "";
+
+      return {
+        id: String(r.id),
+        name: name || "Unknown Enrollee",
+        organization,
+        provider,
+        status,
+        timestamp,
+        requestStatus,
+      };
+    });
+  }, [data]);
 
   const filteredRequests = React.useMemo(() => {
-    let filtered = requestsData
+    let filtered = baseRequests;
 
-    if (activeTab === "unread")
-      filtered = filtered.filter((r) => r.status === "new")
-    if (activeTab === "overdue")
-      filtered = filtered.filter((r) => r.requestStatus === "overdue")
-    if (activeTab === "resolved")
-      filtered = filtered.filter((r) => r.requestStatus === "resolved")
+    // Tab filters are purely client-side for now
+    if (activeTab === "unread") {
+      filtered = filtered.filter((r) => r.status === "new");
+    }
+    if (activeTab === "overdue") {
+      filtered = filtered.filter((r) => r.requestStatus === "overdue");
+    }
+    if (activeTab === "resolved") {
+      filtered = filtered.filter((r) => r.requestStatus === "resolved");
+    }
 
-    if (channel !== "all")
-      filtered = filtered.filter((r) => r.provider === channel)
+    // Channel filter is also client-side for now (all API items are "email" in UI)
+    if (channel !== "all") {
+      filtered = filtered.filter((r) => r.provider === channel);
+    }
 
     if (searchTerm) {
-      const q = searchTerm.toLowerCase()
+      const q = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (r) =>
           r.name.toLowerCase().includes(q) ||
-          r.organization.toLowerCase().includes(q)
-      )
+          r.organization.toLowerCase().includes(q),
+      );
     }
 
-    return filtered
-  }, [activeTab, channel, searchTerm])
+    return filtered;
+  }, [activeTab, channel, searchTerm, baseRequests]);
 
   return (
     <div className="w-[284px] bg-white h-screen overflow-y-auto flex flex-col gap-3">
@@ -143,6 +139,13 @@ export function RequestList({
             </SelectContent>
           </Select>
         </div>
+
+        {isLoading && (
+          <p className="text-xs text-[#98A2B3]">Loading requests…</p>
+        )}
+        {error && !isLoading && (
+          <p className="text-xs text-red-600">Failed to load requests</p>
+        )}
       </div>
 
       {/* Tabs */}
@@ -163,19 +166,27 @@ export function RequestList({
 
       {/* Items */}
       <div className="w-full overflow-y-auto flex flex-col gap-[16px]">
+        {filteredRequests.length === 0 && !isLoading && (
+          <p className="px-4 pb-4 text-xs text-[#98A2B3]">
+            No requests found for current filters.
+          </p>
+        )}
+
         {filteredRequests.map((request) => (
           <button
             key={request.id}
+            type="button"
             onClick={() => onSelectRequest?.(request)}
             className={cn(
               "flex gap-3 pl-2 pr-4 py-[18px] rounded-[16px] border text-left transition cursor-pointer",
               selectedRequestId === request.id
                 ? "border-[#1671D91A] bg-[#1671D912]"
-                : "border-[#EAECF0] bg-[#F9F9F9] hover:bg-[#F9F9F9]/50"
+                : "border-[#EAECF0] bg-[#F9F9F9] hover:bg-[#F9F9F9]/50",
             )}
           >
             <div className="h-[64px] w-[252px] flex items-start gap-[15px]">
               <div className="w-8 h-8 rounded-full flex items-center text-primary justify-center shrink-0 font-semibold capitalize text-xl">
+                {/* All are 'email' for now, to match UI */}
                 {request.provider === "whatsapp" ? (
                   <WhatsAppIcon className="w-4 h-4" />
                 ) : request.provider === "email" ? (
@@ -199,7 +210,7 @@ export function RequestList({
                   <Badge
                     className={cn(
                       "w-fit border-0 flex-shrink-0 h-5 gap-3 rounded-[14.12px] px-1.5",
-                      STATUS_BADGE[request.requestStatus]
+                      STATUS_BADGE[request.requestStatus],
                     )}
                   >
                     {STATUS_LABEL[request.requestStatus]}
@@ -212,7 +223,7 @@ export function RequestList({
                       "text-[12px]/[18px]",
                       request.status === "new"
                         ? "text-primary"
-                        : "text-[#5F6368]"
+                        : "text-[#5F6368]",
                     )}
                   >
                     {request.status === "new" ? "New" : "Read"}
@@ -227,5 +238,5 @@ export function RequestList({
         ))}
       </div>
     </div>
-  )
+  );
 }

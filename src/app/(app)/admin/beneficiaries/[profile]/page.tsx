@@ -4,8 +4,6 @@ import { useParams, useSearchParams } from "next/navigation";
 import * as React from "react";
 
 import Breadcrumbs from "@/components/navigation/Breadcrumbs";
-import { CircledUpArrow } from "@/components/svgs";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import ClaimsTable, { type Claim } from "./_components/claim-table";
@@ -20,6 +18,7 @@ import type { ClaimListItem } from "@/lib/api/claims";
 import { useClaims } from "@/lib/api/claims";
 import { EditEnrolleeForm } from "../_components/edit";
 import RestrictProfile from "../_components/restrict";
+import { UpgradePlan } from "../_components/upgrade";
 
 function unslug(str: string) {
   return decodeURIComponent(str.replace(/-/g, " "));
@@ -107,7 +106,7 @@ export default function BeneficiaryProfile() {
 
   const rawClaims: ClaimListItem[] = claimsResponse?.data ?? [];
 
-  // 🔹 Map backend payload into UI model the table expects
+  // Map backend payload into UI model the table expects
   const uiClaims: Claim[] = React.useMemo(
     () => rawClaims.map(mapClaimListItemToClaim),
     [rawClaims],
@@ -119,12 +118,7 @@ export default function BeneficiaryProfile() {
 
       {/* Action buttons */}
       <div className="h-10 flex gap-4 justify-end py-1">
-        <Button
-          variant="outline"
-          className="w-fit h-10 rounded-xl border border-[#D0D5DD] py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
-        >
-          <CircledUpArrow /> Upgrade Plan
-        </Button>
+        <UpgradePlan enrollee={enrollee ?? null} />
         <RestrictProfile />
         <EditEnrolleeForm enrollee={enrollee ?? null} />
       </div>

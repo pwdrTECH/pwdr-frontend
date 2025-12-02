@@ -1,9 +1,14 @@
 "use client"
 
 import { apiClient } from "@/lib/api/client"
-import type { PlanApiResponse, Scheme } from "@/lib/api/types"
+import type { SimpleApiResponse, Scheme } from "@/lib/api/types"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "../auth/hooks"
+
+export interface ToggleEnrolleePayload {
+  enrolee_id: string
+}
+
 export type CreatePlanServicePayload = {
   hmo_id: number
   name: string
@@ -15,6 +20,14 @@ export type CreatePlanServicePayload = {
   deleted?: number
 }
 
+export type UpdatePlanPayload = {
+  plan_id: number
+  name: string
+  premium: string
+  utilization_threshold: string
+  days_to_activate: string | number
+  active: number
+}
 export type CreatePlanPayload = {
   scheme_id: number
   name: string
@@ -129,7 +142,7 @@ export function useCreatePlan() {
   return useMutation({
     mutationFn: async (
       payload: CreatePlanPayload
-    ): Promise<PlanApiResponse> => {
+    ): Promise<SimpleApiResponse> => {
       const body = {
         scheme_id: payload.scheme_id,
         name: payload.name,
@@ -144,7 +157,7 @@ export function useCreatePlan() {
         })),
       }
 
-      const response = await apiClient.post<PlanApiResponse>(
+      const response = await apiClient.post<SimpleApiResponse>(
         "/new-plan.php",
         body
       )
@@ -161,12 +174,42 @@ export function useCreatePlan() {
       return apiResponse
     },
     onSuccess: () => {
-      // refresh schemes list so UI updates
       queryClient.invalidateQueries({ queryKey: ["schemes"] })
     },
   })
 }
 
+/* ============================
+    Update Plan
+============================ */
+
+export function useUpdatePlan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: UpdatePlanPayload
+    ): Promise<SimpleApiResponse> => {
+      const response = await apiClient.post<SimpleApiResponse>(
+        "/edit-plan.php",
+        payload
+      )
+
+      const apiResponse = response.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        throw new Error(apiResponse?.message || "Failed to update plan")
+      }
+
+      return apiResponse
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plans"] })
+      queryClient.invalidateQueries({ queryKey: ["plan-details"] })
+      queryClient.invalidateQueries({ queryKey: ["schemes"] })
+    },
+  })
+}
 export function usePlanDetails(filters: PlanDetailsRequest) {
   return useQuery({
     queryKey: ["plan-details", filters],
@@ -176,12 +219,10 @@ export function usePlanDetails(filters: PlanDetailsRequest) {
         id: filters.id,
         show_services: filters.show_services ?? 1,
       }
-
       const res = await apiClient.post<PlanDetailsResponse>(
         "/fetch-plan-details.php",
         body
       )
-
       const payload = res.data
 
       if (!payload) throw new Error("Failed to fetch plan details")
@@ -189,6 +230,39 @@ export function usePlanDetails(filters: PlanDetailsRequest) {
       if (payload.status === "success") return payload
 
       throw new Error(payload.message || "Failed to fetch plan details")
+    },
+  })
+}
+
+export function useDeactivateEnrollee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: ToggleEnrolleePayload
+    ): Promise<SimpleApiResponse> => {
+      const res = await apiClient.post<SimpleApiResponse>(
+        "/deactivate-enrolee.php",
+        payload
+      )
+
+      const apiResponse = res.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        throw new Error(apiResponse?.message || "Failed to deactivate enrollee")
+      }
+
+      return apiResponse
+    },
+    onSuccess: (_data, variables) => {
+      // refresh list
+      queryClient.invalidateQueries({ queryKey: ["beneficiaries"] })
+      // refresh details for this enrollee if you use this key shape
+      if (variables.enrolee_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["enrollee-details", { enrolee_id: variables.enrolee_id }],
+        })
+      }
     },
   })
 }

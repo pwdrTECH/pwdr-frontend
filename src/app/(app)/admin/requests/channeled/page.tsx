@@ -1,25 +1,42 @@
-"use client"
+"use client";
 
-import React, { useState } from "react"
-import { RequestDetails } from "./_components/request-details"
-import { RequestList } from "./_components/request-list"
-import type { RequestItem } from "./_components/types"
+import { useState } from "react";
+import { RequestDetails } from "./_components/request-details";
+import { RequestList } from "./_components/request-list";
+import type { RequestItem } from "./_components/types";
 
 export default function ChanneledRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(
-    null
-  )
+    null,
+  );
 
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6">
+      {/* Left: list */}
       <RequestList
         onSelectRequest={(r) => setSelectedRequest(r)}
         selectedRequestId={selectedRequest?.id}
       />
-      <RequestDetails
-        requestId={selectedRequest?.id}
-        selected={selectedRequest}
-      />
+
+      {/* Right: details or empty state */}
+      {selectedRequest ? (
+        <RequestDetails
+          requestId={selectedRequest.id}
+          selected={selectedRequest}
+        />
+      ) : (
+        <div className="flex-1 p-6 rounded-3xl border border-[#E4E7EC] bg-white flex items-center justify-center text-center">
+          <div className="max-w-sm space-y-2">
+            <p className="text-[18px]/[24px] font-hnd font-semibold text-[#101828]">
+              No request selected
+            </p>
+            <p className="text-[14px]/[20px] text-[#667085] font-hnd">
+              Select a request on the left to view its details, activity logs,
+              and treatment items.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }

@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { formatNaira } from "@/lib/utils";
-import EditPlanForm from "./EditPlan";
+// import EditPlanForm from "./EditPlan";
 import { PlanDetailsSheet } from "./PlanDetailsSheet";
 import type { SchemeGroup } from "./types";
 
@@ -37,7 +37,7 @@ export function SchemesList({
                 </span>
               </span>
 
-              <EditPlanForm />
+              {/* <EditPlanForm plan={plan} /> */}
             </div>
           </div>
 

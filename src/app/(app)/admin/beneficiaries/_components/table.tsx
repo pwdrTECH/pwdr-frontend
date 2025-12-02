@@ -15,20 +15,24 @@ import { cn, slugify } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { EnrolleeRow } from "../page";
+import { ActivateEnrollee } from "./activate";
+import { Button } from "@/components/ui/button";
+import { DeactivateEnrollee } from "./deactivate";
+import { DeleteEnrollee } from "./delete";
 
 interface EnrolleesTableProps {
   enrollees: EnrolleeRow[];
 }
 
 function getUtilizationColor(utilization: number): string {
-  if (utilization <= 30) return "text-[#53AF70]";
-  if (utilization <= 60) return "text-[#E99536]";
+  if (utilization <= 30) return "text-[#E99536]";
+  if (utilization <= 60) return "text-[#53AF70]";
   return "text-[#DE5242]";
 }
 
 function getUtilizationDotColor(utilization: number): string {
-  if (utilization <= 30) return "bg-[#53AF70]";
-  if (utilization <= 60) return "bg-[#E99536]";
+  if (utilization <= 30) return "bg-[#E99536]";
+  if (utilization <= 60) return "bg-[#53AF70]";
   return "bg-[#DE5242]";
 }
 
@@ -47,8 +51,6 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
     const name =
       `${enrollee.first_name} ${enrollee.other_names} ${enrollee.surname}`.trim() ||
       "beneficiary";
-
-    // Use enrolleeId (code) as the dynamic route segment,
     const encoded = encodeURIComponent(enrollee.enrolee_id);
     router.push(`/admin/beneficiaries/${slugify(name)}?enid=${encoded}`);
   };
@@ -57,11 +59,13 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
       <TableContainer>
         <Table className="min-w-[900px]">
           <TableHeader>
-            <TableRow className="border-b border-gray-200">
+            <TableRow>
               <TableHead className="w-[25%]">Enrollee name</TableHead>
+              <TableHead className="w-[15%]">Employee status</TableHead>
               <TableHead className="w-[15%]">Scheme</TableHead>
               <TableHead className="w-[15%]">Plan</TableHead>
               <TableHead className="w-[15%]">Role</TableHead>
+              <TableHead className="w-[15%]">Status</TableHead>
               <TableHead className="w-[15%]">Balance</TableHead>
               <TableHead className="w-[15%]">Utilization</TableHead>
               <TableHead className="w-[10%] text-right"></TableHead>
@@ -70,10 +74,7 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
 
           <TableBody id={controlsId}>
             {slice?.map((enrollee) => (
-              <TableRow
-                key={enrollee.id}
-                className="hover:bg-gray-50 border-b border-gray-100"
-              >
+              <TableRow key={enrollee.id}>
                 <TableCell className="pl-6">
                   <div className="flex flex-col">
                     <div className="font-hnd font-medium text-[16px]/[24px] text-[#293347]">
@@ -88,15 +89,12 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
                     </div>
                   </div>
                 </TableCell>
-
+                <TableCell>{enrollee.employment_status}</TableCell>
                 <TableCell>{enrollee.scheme}</TableCell>
-
                 <TableCell>{enrollee.plan_name}</TableCell>
-
                 <TableCell>{enrollee.user_role}</TableCell>
-
+                <TableCell>{enrollee.status}</TableCell>
                 <TableCell>{enrollee.balance}</TableCell>
-
                 <TableCell className="align-middle">
                   <div className="flex items-center gap-2">
                     <div
@@ -122,38 +120,31 @@ export default function EnrolleesTable({ enrollees }: EnrolleesTableProps) {
                       {
                         type: "button",
                         button: (
-                          <button
+                          <Button
+                            variant="outline"
+                            size="sm"
                             type="button"
-                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                            className="border-0 hover:border-0 hover:shadow-none"
                             onClick={() => handleViewBeneficiary(enrollee)}
                           >
                             View Beneficiary
-                          </button>
+                          </Button>
                         ),
                       },
                       "separator",
                       {
                         type: "button",
-                        button: (
-                          <button
-                            type="button"
-                            className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          >
-                            Edit
-                          </button>
-                        ),
+                        button:
+                          enrollee?.status !== "active" ? (
+                            <ActivateEnrollee enrollee={enrollee} />
+                          ) : (
+                            <DeactivateEnrollee enrollee={enrollee} />
+                          ),
                       },
                       "separator",
                       {
                         type: "button",
-                        button: (
-                          <button
-                            type="button"
-                            className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          >
-                            Delete
-                          </button>
-                        ),
+                        button: <DeleteEnrollee enrollee={enrollee} />,
                       },
                     ]}
                   />

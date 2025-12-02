@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useClaims, type ClaimListItem } from "@/lib/api/claims";
 
 type RequestStatus = "Approved" | "Rejected" | "Pending";
 type TimeFilter = "Day" | "Month" | "Year" | "All";
@@ -39,133 +40,81 @@ interface Request {
   date: string; // e.g. "12/10/23" (dd/mm/yy)
 }
 
-const mockRequests: Request[] = [
-  {
-    id: "SHTL/CAC/1081",
-    enrolleeName: "Olaewaju Michael Saheed",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Allergic conjunctivitis",
-    services: "General Consultation",
-    drug: "Amoxicillin",
-    cost: "N29,090",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    id: "SHTL/CBC/1081",
-    enrolleeName: "Austin Winfred Ebuka",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Hypertension",
-    services: "Dermatology",
-    drug: "Paracetamol",
-    cost: "N21,877",
-    status: "Rejected",
-    date: "12/10/23",
-  },
-  {
-    id: "CSTL/CAC/1082",
-    enrolleeName: "Olaewaju Michael Saheed",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Asthma",
-    services: "Cardiology",
-    drug: "Omeprazole",
-    cost: "N500,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    id: "BZTL/CBC/1081",
-    enrolleeName: "Austin Winfred Ebuka",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Major Depressive Disorder",
-    services: "Radiology",
-    drug: "Paracetamol",
-    cost: "N677,789",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    id: "SHTL/CAD/1081",
-    enrolleeName: "Olaewaju Michael Saheed",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Malaria",
-    services: "General Consultation",
-    drug: "Amoxicillin",
-    cost: "N90,997",
-    status: "Pending",
-    date: "12/10/23",
-  },
-  {
-    id: "CHTL/CBC/1081",
-    enrolleeName: "Austin Winfred Ebuka",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Osteoarthritis",
-    services: "Cardiology",
-    drug: "Atorvastatin",
-    cost: "N76,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    id: "CBTL/CBC/1081",
-    enrolleeName: "Olaewaju Michael Saheed",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Catarrh",
-    services: "Radiology",
-    drug: "Paracetamol",
-    cost: "N66,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-  {
-    id: "SHTL/CBD/1081",
-    enrolleeName: "Austin Winfred Ebuka",
-    enrolleeId: "13/OJ/9F42N",
-    diagnosis: "Malaria",
-    services: "General Consultation",
-    drug: "Omeprazole",
-    cost: "N91,000",
-    status: "Approved",
-    date: "12/10/23",
-  },
-];
+/* -------------------------------------------------------------------------- */
+/*                         MAPPING: API → TABLE ROW                           */
+/* -------------------------------------------------------------------------- */
 
-const getStatusColor = (status: RequestStatus) => {
-  switch (status) {
-    case "Approved":
-      return "bg-[#1671D91A] text-[#1671D9] border-[#0000001A]";
-    case "Rejected":
-      return "bg-[#FEF3F2] text-red-700 border-[#FECDCA]";
-    case "Pending":
-      return "bg-[#FFFAEB] text-[#B54708] border-[#FEDF89]";
-    default:
-      return "bg-gray-50 text-gray-700 border-[#EAECF0]";
+// Map backend status → UI status label
+function mapApiStatusToRequestStatus(
+  apiStatus: string | null | undefined,
+): RequestStatus {
+  const s = (apiStatus ?? "").toLowerCase();
+  if (s === "approved" || s === "processed") return "Approved";
+  if (s === "pending") return "Pending";
+  if (s === "rejected" || s === "queried") return "Rejected";
+  return "Pending";
+}
+
+// Format date from ISO / timestamp to "dd/mm/yy"
+function formatDateToDMY(value: string | number | null | undefined): string {
+  if (!value && value !== 0) return "";
+  let dt: Date;
+
+  if (typeof value === "number") {
+    // assume it's a unix timestamp (seconds)
+    if (value.toString().length <= 10) {
+      dt = new Date(value * 1000);
+    } else {
+      dt = new Date(value);
+    }
+  } else {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    dt = parsed;
   }
-};
 
-const StatCard = ({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-}) => (
-  <div className="h-[124px] bg-white rounded-[12px] border border-[#EAECF0] p-4 flex items-start justify-between">
-    <div className="h-[80px] flex flex-col gap-8">
-      <p className="text-[14px]/[20px] text-[#7A7A7A] font-semibold font-hnd tracking-normal">
-        {title}
-      </p>
-      <p className="text-[24px]/[40px] font-hnd font-bold text-[#101928] tracking-[-0.02em]">
-        {value}
-      </p>
-    </div>
-    <div>{icon}</div>
-  </div>
-);
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const yy = String(dt.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
 
-/* ---------- helpers: date parsing + time filter ---------- */
+// Map ClaimListItem from API into the UI Request row
+function mapClaimToRequestRow(c: ClaimListItem): Request {
+  const enrolleeName =
+    [c.enrolee_first_name ?? "", c.enrolee_surname ?? ""].join(" ").trim() ||
+    (c.enrolee_code ?? "");
+
+  const diagnosis = c.diagnosis ?? "-";
+
+  // You don't have a single "services" field – use channel/plan/lab as a proxy
+  const services = c.lab ?? c.radiology ?? c.channel ?? c.plan_name ?? "—";
+
+  // Use prescription as "drug" if present
+  const drug = c.prescription ?? "—";
+
+  // No explicit cost field in ClaimListItem; show "—" for now
+  const cost = "—";
+
+  const status = mapApiStatusToRequestStatus(c.status);
+  const date = formatDateToDMY(c.encounter_date || c.date_created);
+
+  return {
+    id: c.tracking_number || String(c.id),
+    enrolleeName,
+    enrolleeId: c.enrolee_code || String(c.enrolee_id ?? ""),
+    diagnosis,
+    services,
+    drug,
+    cost,
+    status,
+    date,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          HELPERS: DATE FILTERING                           */
+/* -------------------------------------------------------------------------- */
 
 // parse "dd/mm/yy" safely; falls back to native Date if not in that format
 function parseDMY(d: string): Date | null {
@@ -196,6 +145,53 @@ function sameYear(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear();
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              STATUS BADGE COLOR                            */
+/* -------------------------------------------------------------------------- */
+
+const getStatusColor = (status: RequestStatus) => {
+  switch (status) {
+    case "Approved":
+      return "bg-[#1671D91A] text-[#1671D9] border-[#0000001A]";
+    case "Rejected":
+      return "bg-[#FEF3F2] text-red-700 border-[#FECDCA]";
+    case "Pending":
+      return "bg-[#FFFAEB] text-[#B54708] border-[#FEDF89]";
+    default:
+      return "bg-gray-50 text-gray-700 border-[#EAECF0]";
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                 STAT CARD                                  */
+/* -------------------------------------------------------------------------- */
+
+const StatCard = ({
+  title,
+  value,
+  icon,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+}) => (
+  <div className="h-[124px] bg-white rounded-[12px] border border-[#EAECF0] p-4 flex items-start justify-between">
+    <div className="h-[80px] flex flex-col gap-8">
+      <p className="text-[14px]/[20px] text-[#7A7A7A] font-semibold font-hnd tracking-normal">
+        {title}
+      </p>
+      <p className="text-[24px]/[40px] font-hnd font-bold text-[#101928] tracking-[-0.02em]">
+        {value}
+      </p>
+    </div>
+    <div>{icon}</div>
+  </div>
+);
+
+/* -------------------------------------------------------------------------- */
+/*                               MAIN COMPONENT                               */
+/* -------------------------------------------------------------------------- */
+
 export default function RequestStatusPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("All");
@@ -204,23 +200,41 @@ export default function RequestStatusPage() {
   >("all");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const controlsId = "request-status-table-body";
+
+  /* ---------------------- FETCH CLAIMS FROM BACKEND ---------------------- */
+  // We fetch "all" statuses and do filtering on the client
+  const { data, isLoading, error } = useClaims({
+    page: 1,
+    limit: 500, // adjust as needed
+    status: "", // "" → no backend status filter; we filter locally
+  });
+
+  const claims = (data?.data as ClaimListItem[]) ?? [];
+
+  // Normalize into the table row shape
+  const allRequests: Request[] = useMemo(
+    () => claims.map((c) => mapClaimToRequestRow(c)),
+    [claims],
+  );
 
   // latest date in data -> reference for Day/Month/Year filters
   const latestDate = useMemo(() => {
     let latest: Date | null = null;
-    for (const r of mockRequests) {
+    for (const r of allRequests) {
       const d = parseDMY(r.date);
       if (!d) continue;
       if (!latest || d > latest) latest = d;
     }
     return latest;
-  }, []);
+  }, [allRequests]);
 
-  // 1) search
+  /* ------------------------------ 1) SEARCH ------------------------------ */
+
   const searchFiltered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return mockRequests;
-    return mockRequests.filter((r) => {
+    if (!q) return allRequests;
+    return allRequests.filter((r) => {
       const hay = [
         r.enrolleeName,
         r.enrolleeId,
@@ -236,9 +250,10 @@ export default function RequestStatusPage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [searchQuery]);
+  }, [searchQuery, allRequests]);
 
-  // 2) time
+  /* ------------------------------ 2) TIME ------------------------------- */
+
   const timeFiltered = useMemo(() => {
     if (timeFilter === "All" || !latestDate) return searchFiltered;
     return searchFiltered.filter((r) => {
@@ -251,7 +266,8 @@ export default function RequestStatusPage() {
     });
   }, [searchFiltered, timeFilter, latestDate]);
 
-  // 3) status tab
+  /* ---------------------------- 3) STATUS TAB --------------------------- */
+
   const tableFiltered = useMemo(() => {
     switch (statusTab) {
       case "approved":
@@ -265,7 +281,8 @@ export default function RequestStatusPage() {
     }
   }, [timeFiltered, statusTab]);
 
-  // stats reflect global (search + time), not the status sub-filter
+  /* -------------------------- STATS (CARDS) ----------------------------- */
+  // Stats reflect search + time filters, not the status sub-filter
   const statTotal = timeFiltered.length;
   const statApproved = timeFiltered.filter(
     (r) => r.status === "Approved",
@@ -275,15 +292,20 @@ export default function RequestStatusPage() {
   ).length;
   const statPending = timeFiltered.filter((r) => r.status === "Pending").length;
 
+  /* ----------------------------- PAGINATION ----------------------------- */
+
   const totalItems = tableFiltered.length;
   const start = (page - 1) * pageSize;
   const slice = tableFiltered.slice(start, start + pageSize);
-  const controlsId = "request-status-table-body";
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: we intentionally reset page when any filter changes
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, timeFilter, statusTab]);
+  }, []);
+
+  /* ---------------------------------------------------------------------- */
+  /*                                 RENDER                                 */
+  /* ---------------------------------------------------------------------- */
+
   return (
     <main className="w-full">
       <Tabs
@@ -379,53 +401,77 @@ export default function RequestStatusPage() {
                 </TableRow>
               </TableHeader>
               <TableBody id={controlsId}>
-                {slice.map((request) => (
-                  <TableRow
-                    key={request.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {request.id}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {request.enrolleeName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {request.enrolleeId}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.diagnosis}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.services}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.drug}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {request.cost}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
-                      <Badge
-                        variant="outline"
-                        className={`font-medium ${getStatusColor(
-                          request.status,
-                        )}`}
-                      >
-                        {request.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.date}
+                {isLoading && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="py-10 text-center text-sm text-gray-500"
+                    >
+                      Loading requests…
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
 
-                {slice.length === 0 && (
+                {!isLoading && error && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="py-10 text-center text-sm text-red-500"
+                    >
+                      Failed to load requests.
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!isLoading &&
+                  !error &&
+                  slice.map((request) => (
+                    <TableRow
+                      key={request.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {request.id}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {request.enrolleeName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {request.enrolleeId}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {request.diagnosis}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {request.services}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {request.drug}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {request.cost}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <Badge
+                          variant="outline"
+                          className={`font-medium ${getStatusColor(
+                            request.status,
+                          )}`}
+                        >
+                          {request.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {request.date}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                {!isLoading && !error && slice.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={8}
@@ -439,7 +485,7 @@ export default function RequestStatusPage() {
             </Table>
           </TableContainer>
 
-          {/* Pagination */}
+          {/* Pagination (client-side) */}
           <TablePagination
             page={page}
             onPageChange={setPage}

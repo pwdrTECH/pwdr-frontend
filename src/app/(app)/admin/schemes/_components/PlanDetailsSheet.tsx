@@ -5,9 +5,9 @@ import { CustomSheet } from "@/components/overlays/SideDialog";
 import { AngleRight } from "@/components/svgs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import EditPlanForm from "./EditPlan";
 import type { PlanItem } from "./types";
 import { usePlanDetails } from "@/lib/api/schemes";
+import EditPlan from "./EditPlan";
 
 function formatNaira(value: number | string | null | undefined): string {
   const n = Number(value);
@@ -17,6 +17,21 @@ function formatNaira(value: number | string | null | undefined): string {
 
 type PlanDetailsSheetProps = {
   plan: PlanItem;
+};
+
+// Shape for possible objects returned for services
+type ApiService = {
+  id?: string | number;
+  name?: string;
+  service_name?: string;
+  code?: string;
+  cost?: string | number;
+  amount?: string | number;
+  price?: string | number;
+  utilization_limit?: string | number;
+  frequency_limit?: string | number;
+  limit?: string | number;
+  freq?: string | number;
 };
 
 export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
@@ -31,17 +46,19 @@ export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
   const apiData = data?.data ?? {};
 
   // Core fields with fallbacks to the original plan card
-  const name: string = apiData.name ?? plan.name;
-  const premium = apiData.premium ?? apiData.plan_premium ?? plan.premium;
+  const name: string = apiData.name ?? apiData.plan_name ?? plan.name;
+  const premium = apiData.premium ?? apiData.plan_premium ?? plan.premium ?? 0;
   const utilization =
     apiData.utilization ??
     apiData.plan_utilization_threshold ??
-    plan.utilization;
+    plan.utilization ??
+    0;
   const waitDays =
     apiData.days_to_activate ??
     apiData.wait_days ??
     apiData.plan_days_to_activate ??
-    plan.waitDays;
+    plan.waitDays ??
+    0;
 
   const schemesRaw =
     apiData.schemes ??
@@ -54,7 +71,7 @@ export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
     ? schemesRaw.map((s: any) => String(s))
     : [];
 
-  //  Normalize services
+  //  Normalize services (for display AND for edit)
   const rawServices =
     apiData.services ??
     apiData.service_items ??
@@ -62,26 +79,72 @@ export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
     plan.serviceItems ??
     [];
 
-  const services: string[] = Array.isArray(rawServices)
-    ? rawServices.map((svc: any) => {
-        // Already a string → keep as is
-        if (typeof svc === "string") return svc;
+  let displayServices: string[] = [];
+  let editServiceItems: {
+    id: string;
+    name: string;
+    cost: string;
+    utilizationLimit: string;
+    frequencyLimit: string;
+  }[] = [];
 
-        if (svc && typeof svc === "object") {
-          const title = svc.name ?? svc.service_name ?? svc.code ?? "Service";
+  if (Array.isArray(rawServices)) {
+    // Case 1: it's an array of strings
+    if (rawServices.length === 0 || typeof rawServices[0] === "string") {
+      displayServices = (rawServices as string[]).map((svc) => String(svc));
 
-          const cost = svc.cost ?? svc.amount ?? svc.price;
+      editServiceItems = displayServices.map((svc, idx) => ({
+        id: String(idx + 1),
+        name: svc,
+        cost: "",
+        utilizationLimit: "",
+        frequencyLimit: "",
+      }));
+    } else {
+      // Case 2: it's an array of objects
+      const arr = rawServices as ApiService[];
+      displayServices = arr.map((svc: ApiService) => {
+        const title = svc.name ?? svc.service_name ?? svc.code ?? "Service";
 
-          if (cost != null && !Number.isNaN(Number(cost))) {
-            return `${title} - ${formatNaira(cost)}`;
-          }
+        const cost = svc.cost ?? svc.amount ?? svc.price;
 
-          return String(title);
+        if (cost != null && !Number.isNaN(Number(cost))) {
+          return `${title} - ${formatNaira(cost)}`;
         }
 
-        return String(svc);
-      })
-    : [];
+        return String(title);
+      });
+
+      editServiceItems = arr.map((svc, idx) => ({
+        id: String(svc.id ?? idx + 1),
+        name: svc.name ?? svc.service_name ?? svc.code ?? "",
+        cost:
+          svc.cost != null
+            ? String(svc.cost)
+            : svc.amount != null
+              ? String(svc.amount)
+              : svc.price != null
+                ? String(svc.price)
+                : "",
+        utilizationLimit:
+          (svc.utilization_limit ?? svc.limit ?? svc.freq ?? "")?.toString() ??
+          "",
+        frequencyLimit:
+          (svc.frequency_limit ?? svc.freq ?? "")?.toString() ?? "",
+      }));
+    }
+  }
+
+  // 🔹 Build the model EditPlanForm expects
+  const editPlanModel = {
+    id: plan.id,
+    name,
+    premium,
+    utilization,
+    waitDays,
+    schemes,
+    serviceItems: editServiceItems,
+  };
 
   return (
     <CustomSheet
@@ -106,7 +169,8 @@ export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
           >
             Close
           </Button>
-          <EditPlanForm plan={plan} />
+          {/* Pass normalized edit model, not raw PlanItem */}
+          <EditPlan plan={editPlanModel} />
         </div>
       }
       contentClassName="px-0"
@@ -136,7 +200,7 @@ export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
             {/* Stats grid */}
             <div className="flex flex-wrap items-center gap-4">
               <Stat title="Premium" value={formatNaira(premium)} />
-              <Stat title="Services" value={String(services.length)} />
+              <Stat title="Services" value={String(displayServices.length)} />
               <Stat title="Activation Days" value={`${waitDays ?? 0} Days`} />
             </div>
 
@@ -183,19 +247,19 @@ export function PlanDetailsSheet({ plan }: PlanDetailsSheetProps) {
                   htmlFor="service"
                   className="mb-1 text-[18px]/[28px] font-bold text-[#101828] tracking-normal font-hnd"
                 >
-                  Service Items ({services.length})
+                  Service Items ({displayServices.length})
                 </label>
                 <p className="text-[16px]/[24px] text-[#475467] font-normal font-hnd tracking-normal">
                   Services included in Plan
                 </p>
               </div>
               <div className="flex flex-col gap-4">
-                {services.length === 0 && (
+                {displayServices.length === 0 && (
                   <div className="text-sm text-[#98A2B3]">
                     No services configured for this plan.
                   </div>
                 )}
-                {services.map((item, index) => (
+                {displayServices.map((item, index) => (
                   <div
                     key={`plan-service-${index + 1}`}
                     className="min-h-16 rounded-xl border border-[#EAECF0] bg-white px-4 py-2 text-[16px]/[24px] text-[#344054] font-normal font-hnd tracking-normal"

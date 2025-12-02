@@ -1,7 +1,12 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import apiClient from "./client"
+import type { SimpleApiResponse } from "./types"
+
+/* ============================
+   Filters & List Types
+============================ */
 
 export interface ClaimFilters {
   page?: number
@@ -58,18 +63,72 @@ export interface ClaimsApiResponse {
   [key: string]: any
 }
 
-export interface EnrolleeDetailsRequest {
-  id?: string | number
-  enrolee_id?: string
-}
+/* ============================
+   Detail Types
+============================ */
 
-export interface EnrolleeDetailsResponse {
-  status: string
-  data: any
-  message?: string
+/** Single claim line item – aligned to what you use in the modal */
+export interface ClaimItem {
+  diagnosis: string | null
+  services: string | null
+  service_code: string | null
+  category: string | null
+  qty: string | number | null
+  submitted_bill: string | null
+  status: string | null
+  payable_bill: string | null
   [key: string]: any
 }
-/* ------------------ Hook ------------------ */
+
+/** Claim header + items – includes all fields the UI currently reads */
+export interface ClaimDetail {
+  id?: number
+  tracking_number?: string
+
+  provider_id?: number
+  provider_name?: string | null
+
+  enrollee_id?: string | null
+  enrollee_name?: string | null
+  enrollee_age?: number | string | null
+  enrollee_gender?: string | null
+
+  encounter_date?: string | null
+  approved_date?: string | null
+  total_cost?: string | null
+
+  bank_account_number?: string | null
+  bank_name?: string | null
+  bank_account_name?: string | null
+
+  approver_name?: string | null
+  approver_role?: string | null
+
+  items?: ClaimItem[]
+
+  [key: string]: any
+}
+
+export interface ClaimDetailsApiResponse {
+  status: "success" | "empty" | "error" | string
+  data?: ClaimDetail
+  message?: string
+}
+
+export interface ClaimDetailsRequest {
+  claim_id?: number
+  tracking_number?: string
+}
+
+export type ProcessClaimPayload = {
+  claim_id: number
+  service_id: number
+  status: string
+  note: string
+}
+/* ============================
+   List Claims
+============================ */
 
 export function useClaims(filters: ClaimFilters = {}) {
   return useQuery({
@@ -91,19 +150,22 @@ export function useClaims(filters: ClaimFilters = {}) {
       )
 
       const payload = res.data
+
       if (!payload) {
         throw new Error("Failed to fetch claims")
       }
+
       if (payload.status === "success") {
         return {
           ...payload,
           data: Array.isArray(payload.data) ? payload.data : [],
         }
       }
+
       if (payload.status === "empty") {
         return {
           ...payload,
-          status: "success",
+          status: "success", // ✅ same trick as beneficiaries
           data: [],
           pagination: payload.pagination ?? {
             current_page: body.page,
@@ -115,33 +177,83 @@ export function useClaims(filters: ClaimFilters = {}) {
           },
         }
       }
+
       throw new Error(payload.message || "Failed to fetch claims")
     },
   })
 }
 
-export function useEnrolleeDetails(filters: EnrolleeDetailsRequest) {
+/* ============================
+   Claim Details
+   POST /fetch-claim-details.php
+============================ */
+
+export function useClaimDetails(params: ClaimDetailsRequest) {
   return useQuery({
-    queryKey: ["enrollee-details", filters],
-    enabled: !!filters.id || !!filters.enrolee_id,
-    queryFn: async (): Promise<EnrolleeDetailsResponse> => {
+    queryKey: ["claim-details", params],
+    enabled: !!(params.claim_id || params.tracking_number),
+    queryFn: async (): Promise<ClaimDetail | null> => {
       const body = {
-        id: filters.id ?? "",
-        enrolee_id: filters.enrolee_id ?? "",
+        claim_id: params.claim_id ?? "",
+        tracking_number: params.tracking_number ?? "",
       }
 
-      const res = await apiClient.post<EnrolleeDetailsResponse>(
-        "/fetch-enrolee-details.php",
+      const res = await apiClient.post<ClaimDetailsApiResponse>(
+        "/fetch-claim-details.php",
         body
       )
 
       const payload = res.data
 
-      if (!payload) throw new Error("Failed to fetch enrollee details")
+      if (!payload) {
+        throw new Error("Failed to fetch claim details")
+      }
 
-      if (payload.status === "success") return payload
+      if (payload.status === "success") {
+        // normalize missing data to null instead of undefined
+        return payload.data ?? null
+      }
 
-      throw new Error(payload.message || "Failed to fetch enrollee details")
+      if (payload.status === "empty") {
+        return null
+      }
+
+      throw new Error(payload.message || "Failed to fetch claim details")
+    },
+  })
+}
+/* ============================
+    Create Plan (existing)
+============================ */
+
+export function useProcessClaim() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (
+      payload: ProcessClaimPayload
+    ): Promise<SimpleApiResponse> => {
+      const response = await apiClient.post<SimpleApiResponse>(
+        "/process-claim-service.php",
+        payload
+      )
+
+      const apiResponse = response.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        if (apiResponse?.status === "exist") {
+          // match backend "exist" semantics but with claim wording
+          throw new Error("This claim service has already been processed")
+        }
+        throw new Error(apiResponse?.message || "Failed to process claim")
+      }
+
+      return apiResponse
+    },
+    onSuccess: () => {
+      // Invalidate claims and claim-details caches so UI refreshes
+      queryClient.invalidateQueries({ queryKey: ["claims"] })
+      queryClient.invalidateQueries({ queryKey: ["claim-details"] })
     },
   })
 }

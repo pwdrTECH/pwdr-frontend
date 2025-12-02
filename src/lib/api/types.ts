@@ -63,12 +63,12 @@ export interface ApiResponse {
   message?: string
 }
 
-export interface PlanApiResponse {
-  status: string
-  message?: string
-}
-
 export interface EnrolleeApiResponse {
   status: string
   message?: string
+}
+export interface SimpleApiResponse {
+  status: string
+  message?: string
+  [key: string]: any
 }

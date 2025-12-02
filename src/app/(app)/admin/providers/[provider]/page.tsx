@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useParams } from "next/navigation"
-import Breadcrumbs from "@/components/navigation/Breadcrumbs"
-import AddService from "./_components/addService"
-import { Filters } from "./_components/filters"
-import { ServicesTable } from "./_components/table"
+import * as React from "react";
+import { useParams } from "next/navigation";
+import Breadcrumbs from "@/components/navigation/Breadcrumbs";
+import AddService from "./_components/addService";
+import { Filters } from "./_components/filters";
+import { ServicesTable } from "./_components/table";
 
 function unslug(str: string) {
-  return decodeURIComponent(str.replace(/-/g, " "))
+  return decodeURIComponent(str.replace(/-/g, " "));
 }
 
 const mockServices = [
@@ -75,31 +75,33 @@ const mockServices = [
     lastUpdated: "9 Aug, 2025",
     status: "Approved" as const,
   },
-]
+];
 export default function ProviderPage() {
-  const params = useParams<{ provider: string }>()
-  const providerSlug = params?.provider ?? ""
-  const providerName = React.useMemo(() => unslug(providerSlug), [providerSlug])
+  const params = useParams<{ provider: string }>();
+  const providerSlug = params?.provider ?? "";
+  const providerName = React.useMemo(
+    () => unslug(providerSlug),
+    [providerSlug],
+  );
 
-  const [currentPage, setCurrentPage] = React.useState(1)
   const [filters, setFilters] = React.useState({
     search: "",
     cost: "min-max",
     status: "approved",
-  })
+  });
 
   return (
     <div className="w-full flex flex-col gap-6">
-      <>
-        <Breadcrumbs />
+      <Breadcrumbs />
+      <span className="flex flex-col gap-">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl/[38px] font-hnd font-bold text-[#101828]">
+          <h1 className="text-3xl/[38px] font-hnd font-bold text-[#101828] capitalize">
             {providerName || "Provider"}
           </h1>
           <AddService />
         </div>
         <div className="h-px w-full bg-[#EAECF0]" />
-      </>
+      </span>
 
       <Filters
         onSearchChange={(value) => setFilters((f) => ({ ...f, search: value }))}
@@ -109,5 +111,5 @@ export default function ProviderPage() {
 
       <ServicesTable services={mockServices} />
     </div>
-  )
+  );
 }

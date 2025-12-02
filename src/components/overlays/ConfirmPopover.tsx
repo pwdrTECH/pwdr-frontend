@@ -1,33 +1,33 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { CautionIcon } from "../svgs"
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CautionIcon } from "../svgs";
 
-type Variant = "danger" | "warning" | "info"
+type Variant = "danger" | "warning" | "info";
 
 export type ConfirmPopoverProps = {
-  open?: boolean
-  onOpenChange?: (v: boolean) => void
-  trigger?: React.ReactNode
-  variant?: Variant
-  title: React.ReactNode
-  description?: React.ReactNode
-  confirmText?: string
-  cancelText?: string
-  onConfirm?: () => Promise<void> | void
-  onCancel?: () => void
-  lockDuringConfirm?: boolean
-  icon?: React.ReactNode
-  contentClassName?: string
-  side?: "top" | "right" | "bottom" | "left"
-  align?: "start" | "center" | "end"
-}
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  trigger?: React.ReactNode;
+  variant?: Variant;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => Promise<void> | void;
+  onCancel?: () => void;
+  lockDuringConfirm?: boolean;
+  icon?: React.ReactNode;
+  contentClassName?: string;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+};
 
 const VARIANT_STYLES: Record<
   Variant,
@@ -51,7 +51,7 @@ const VARIANT_STYLES: Record<
     iconWrap: "text-[#3B82F6]",
     border: "border-[#3B82F6]/40",
   },
-}
+};
 
 export function ConfirmPopover({
   open: openProp,
@@ -70,61 +70,45 @@ export function ConfirmPopover({
   side = "bottom",
   align = "end",
 }: ConfirmPopoverProps) {
-  const [internalOpen, setInternalOpen] = React.useState(false)
-  const controlled = typeof openProp === "boolean"
-  const open = controlled ? openProp! : internalOpen
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const controlled = typeof openProp === "boolean";
+  const open = controlled ? openProp : internalOpen;
 
-  const [busy, setBusy] = React.useState(false)
-  const v = VARIANT_STYLES[variant]
+  const [busy, setBusy] = React.useState(false);
+  const v = VARIANT_STYLES[variant];
 
   const safeSetOpen = React.useCallback(
     (next: boolean) => {
-      if (next === false && lockDuringConfirm && busy) return
-      if (controlled) onOpenChangeProp?.(next)
-      else setInternalOpen(next)
+      if (next === false && lockDuringConfirm && busy) return;
+      if (controlled) onOpenChangeProp?.(next);
+      else setInternalOpen(next);
     },
-    [controlled, lockDuringConfirm, busy, onOpenChangeProp]
-  )
+    [controlled, lockDuringConfirm, busy, onOpenChangeProp],
+  );
 
   async function handleConfirm() {
     try {
       if (onConfirm) {
-        const ret = onConfirm()
+        const ret = onConfirm();
         if (ret instanceof Promise) {
-          setBusy(true)
-          await ret
+          setBusy(true);
+          await ret;
         }
       }
-      safeSetOpen(false)
+      safeSetOpen(false);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   function handleCancel() {
-    onCancel?.()
-    safeSetOpen(false)
+    onCancel?.();
+    safeSetOpen(false);
   }
 
   return (
-    <Popover open={open} onOpenChange={safeSetOpen} modal={false}>
-      {trigger ? (
-        <PopoverTrigger asChild>
-          <span
-            className="inline-flex"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                safeSetOpen(true)
-              }
-            }}
-          >
-            {trigger}
-          </span>
-        </PopoverTrigger>
-      ) : null}
+    <Popover open={open} onOpenChange={safeSetOpen}>
+      {trigger && <PopoverTrigger asChild>{trigger}</PopoverTrigger>}
 
       <PopoverContent
         side={side}
@@ -135,17 +119,17 @@ export function ConfirmPopover({
         className={cn(
           "z-[220] w-[380px] rounded-3xl border bg-white px-4 py-[18px] shadow-lg",
           v.border,
-          contentClassName
+          contentClassName,
         )}
       >
         <div className="flex flex-col items-start gap-3">
           <div className="flex items-center gap-2">
-            {icon ?? <CautionIcon />}{" "}
+            {icon ?? <CautionIcon />}
             <h3 className={cn("text-[16px]/[22px] font-semibold", v.title)}>
               {title}
             </h3>
           </div>
-          <div className="w-full ">{description ?? null}</div>
+          <div className="w-full">{description ?? null}</div>
           <div className="w-full flex items-center justify-end gap-2 mt-4">
             <button
               type="button"
@@ -161,7 +145,7 @@ export function ConfirmPopover({
               disabled={busy}
               className={cn(
                 "h-[33.94px] rounded-xl px-[13.08px] text-[14px] font-hnd font-semibold py-[7.47px] disabled:opacity-60 shadow-[0px_16px_18.8px_0px_#220F0F1F] cursor-pointer",
-                v.confirm
+                v.confirm,
               )}
             >
               {busy ? "Please wait…" : confirmText}
@@ -170,5 +154,5 @@ export function ConfirmPopover({
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
