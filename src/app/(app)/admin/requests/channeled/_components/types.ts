@@ -1,6 +1,11 @@
 export type Provider = "whatsapp" | "email" | "chat"
 export type ReadStatus = "read" | "new"
-export type RequestStatus = "pending" | "in_review" | "overdue" | "resolved"
+export type RequestStatus =
+  | "pending"
+  | "in_review"
+  | "overdue"
+  | "resolved"
+  | "completed"
 
 export interface RequestItem {
   id: string
@@ -18,11 +23,13 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   in_review: "In Review",
   overdue: "Overdue",
   resolved: "Resolved",
+  completed: "Completed",
 }
 
 /** Badge classes per status */
 export const STATUS_BADGE: Record<RequestStatus, string> = {
   pending: "bg-[#FEF5E9] text-[#B47618]",
+  completed: "bg-green-100 text-green-600",
   in_review: "bg-primary/10 text-primary",
   overdue: "bg-[#FF60581A] text-[#FF6058]",
   resolved: "bg-green-100 text-green-600",

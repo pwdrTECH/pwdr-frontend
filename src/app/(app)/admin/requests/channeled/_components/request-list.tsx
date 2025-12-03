@@ -38,7 +38,12 @@ export function RequestList({
   const { data, isLoading, error } = useRequests({
     search: searchTerm,
     channel,
-    status: activeTab,
+    status:
+      activeTab === "overdue"
+        ? "overdue"
+        : activeTab === "resolved"
+          ? "resolved"
+          : undefined,
     page: 1,
     limit: 20,
   });
@@ -57,7 +62,6 @@ export function RequestList({
 
       const requestStatus: RequestItem["requestStatus"] =
         (r.status?.toLowerCase() as RequestItem["requestStatus"]) || "pending";
-
       const name = `${r.enrolee_first_name ?? ""} ${
         r.enrolee_surname ?? ""
       }`.trim();
@@ -67,7 +71,7 @@ export function RequestList({
 
       return {
         id: String(r.id),
-        name: name || "Unknown Enrollee",
+        name: name ?? "",
         organization,
         provider,
         status,

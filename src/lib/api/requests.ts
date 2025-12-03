@@ -1,13 +1,21 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { SimpleApiResponse } from "./types"
 
 /* ========= Types ========= */
 
 export type RequestChannel = "all" | "email" | "whatsapp" | "chat"
-export type RequestStatusFilter = "all" | "unread" | "overdue" | "resolved"
+export type RequestStatusFilter =
+  | "all"
+  | "unread"
+  | "overdue"
+  | "resolved"
+  | "approved"
+  | "completed"
+  | "pending"
+  | "rejected"
 
 export interface RequestFilters {
   page?: number
@@ -119,6 +127,9 @@ export type ProcessClaimPayload = {
   status: string
   notes: string
 }
+export type SubmitClaimRequestPayload = {
+  claim_id: string
+}
 
 /* ============================
    /fetch-requests.php
@@ -132,16 +143,23 @@ export function useRequests(filters: RequestFilters = {}) {
         page: filters.page ?? 1,
         limit: filters.limit ?? 20,
         search: filters.search ?? "",
-        // backend may ignore these for now, but we send them anyway
-        channel:
-          !filters.channel || filters.channel === "all"
-            ? ""
-            : String(filters.channel),
-        status:
-          !filters.status || filters.status === "all"
-            ? ""
-            : String(filters.status),
+        channel: filters.channel ?? "",
+        // if no status is given, don't filter by status (let backend return all)
+        status: filters.status ?? "",
       }
+      // const body = {
+      //   page: filters.page ?? 1,
+      //   limit: filters.limit ?? 20,
+      //   search: filters.search ?? "",
+      //   channel:
+      //     !filters.channel || filters.channel === "all"
+      //       ? ""
+      //       : String(filters.channel),
+      //   status:
+      //     !filters.status || filters.status === "all"
+      //       ? ""
+      //       : String(filters.status),
+      // }
 
       const res = await apiClient.post<RequestsApiResponse>(
         "/fetch-requests.php",
@@ -225,6 +243,36 @@ export function useProcessClaim() {
       if (!apiResponse || apiResponse.status !== "success") {
         if (apiResponse?.status === "exist") {
           throw new Error("This claim service has already been processed")
+        }
+        throw new Error(apiResponse?.message || "Failed to process claim")
+      }
+
+      return apiResponse
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requests"] })
+      queryClient.invalidateQueries({ queryKey: ["request-detail"] })
+    },
+  })
+}
+/* ============================
+    Process claim 
+============================ */
+
+export function useSubmitRequest() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: SubmitClaimRequestPayload) => {
+      const response = await apiClient.post<SimpleApiResponse>(
+        "/complete-claim.php",
+        payload
+      )
+      const apiResponse = response.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        if (apiResponse?.status === "exist") {
+          throw new Error("This claim request has already been processed")
         }
         throw new Error(apiResponse?.message || "Failed to process claim")
       }

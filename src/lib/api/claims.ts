@@ -4,7 +4,36 @@ import { useQuery } from "@tanstack/react-query"
 import apiClient from "./client"
 
 /* ============================
-   Filters & List Types
+   Shared types
+============================ */
+
+export interface ClaimsPagination {
+  current_page: number
+  per_page: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
+export interface ClaimListItem {
+  id: number
+  tracking_number: string
+  provider_id: number
+  plan_id: number
+  channel: string
+  encounter_date: string
+  status: string
+  diagnosis: string | null
+  prescription: string | null
+  lab: string | null
+  radiology: string | null
+  // plus any extra fields (scoring, total_amount, etc)
+  [key: string]: any
+}
+
+/* ============================
+   Claim list
 ============================ */
 
 export interface ClaimFilters {
@@ -17,43 +46,6 @@ export interface ClaimFilters {
   plan_id?: string | number
 }
 
-export interface ClaimListItem {
-  id: number
-  provider_id: number
-  enrolee_id: number
-  tracking_number: string
-  plan_id: number
-  channel: string
-  encounter_date: string
-  status: string
-  date_created: number
-  created_by: number
-  assigned_to: number | null
-  invoice_id: number | null
-  queried: number
-  processed: number
-  diagnosis: string | null
-  prescription: string | null
-  radiology: string | null
-  lab: string | null
-  enrolee_first_name: string | null
-  enrolee_surname: string | null
-  enrolee_code: string | null
-  enrolee_phone: string | null
-  enrolee_email: string | null
-  plan_name: string | null
-  [key: string]: any
-}
-
-export interface ClaimsPagination {
-  current_page: number
-  per_page: number
-  total: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
-}
-
 export interface ClaimsApiResponse {
   status: string
   data: ClaimListItem[]
@@ -61,67 +53,6 @@ export interface ClaimsApiResponse {
   message?: string
   [key: string]: any
 }
-
-/* ============================
-   Detail Types
-============================ */
-
-/** Single claim line item – aligned to what you use in the modal */
-export interface ClaimItem {
-  diagnosis: string | null
-  services: string | null
-  service_code: string | null
-  category: string | null
-  qty: string | number | null
-  submitted_bill: string | null
-  status: string | null
-  payable_bill: string | null
-  [key: string]: any
-}
-
-/** Claim header + items – includes all fields the UI currently reads */
-export interface ClaimDetail {
-  id?: number
-  tracking_number?: string
-
-  provider_id?: number
-  provider_name?: string | null
-
-  enrollee_id?: string | null
-  enrollee_name?: string | null
-  enrollee_age?: number | string | null
-  enrollee_gender?: string | null
-
-  encounter_date?: string | null
-  approved_date?: string | null
-  total_cost?: string | null
-
-  bank_account_number?: string | null
-  bank_name?: string | null
-  bank_account_name?: string | null
-
-  approver_name?: string | null
-  approver_role?: string | null
-
-  items?: ClaimItem[]
-
-  [key: string]: any
-}
-
-export interface ClaimDetailsApiResponse {
-  status: "success" | "empty" | "error" | string
-  data?: ClaimDetail
-  message?: string
-}
-
-export interface ClaimDetailsRequest {
-  claim_id?: number
-  tracking_number?: string
-}
-
-/* ============================
-   List Claims
-============================ */
 
 export function useClaims(filters: ClaimFilters = {}) {
   return useQuery({
@@ -177,9 +108,59 @@ export function useClaims(filters: ClaimFilters = {}) {
 }
 
 /* ============================
-   Claim Details
-   POST /fetch-claim-details.php
+   Claim details
 ============================ */
+
+export interface ClaimItem {
+  diagnosis: string | null
+  services: string | null
+  service_code: string | null
+  category: string | null
+  qty: string | number | null
+  submitted_bill: string | null
+  status: string | null
+  payable_bill: string | null
+  [key: string]: any
+}
+
+export interface ClaimDetail {
+  id?: number
+  tracking_number?: string
+
+  provider_id?: number
+  provider_name?: string | null
+
+  enrollee_id?: string | null
+  enrollee_name?: string | null
+  enrollee_age?: number | string | null
+  enrollee_gender?: string | null
+
+  encounter_date?: string | null
+  approved_date?: string | null
+  total_cost?: string | null
+
+  bank_account_number?: string | null
+  bank_name?: string | null
+  bank_account_name?: string | null
+
+  approver_name?: string | null
+  approver_role?: string | null
+
+  items?: ClaimItem[]
+
+  [key: string]: any
+}
+
+export interface ClaimDetailsApiResponse {
+  status: "success" | "empty" | "error" | string
+  data?: ClaimDetail
+  message?: string
+}
+
+export interface ClaimDetailsRequest {
+  claim_id?: number
+  tracking_number?: string
+}
 
 export function useClaimDetails(params: ClaimDetailsRequest) {
   return useQuery({
@@ -203,7 +184,6 @@ export function useClaimDetails(params: ClaimDetailsRequest) {
       }
 
       if (payload.status === "success") {
-        // normalize missing data to null instead of undefined
         return payload.data ?? null
       }
 
@@ -212,6 +192,119 @@ export function useClaimDetails(params: ClaimDetailsRequest) {
       }
 
       throw new Error(payload.message || "Failed to fetch claim details")
+    },
+  })
+}
+
+/* ============================
+   Enrollee claim history
+============================ */
+
+export interface EnrolleeClaimHistoryFilters {
+  enrolee_id: string // HMO code e.g. "AXA17640612936446"
+  page?: number
+  limit?: number
+}
+
+export interface EnrolleeClaimHistoryEnrollee {
+  id: number
+  enrolee_id: string
+  full_name: string
+}
+
+export interface EnrolleeClaimHistoryData {
+  enrolee: EnrolleeClaimHistoryEnrollee
+  claims: ClaimListItem[]
+  pagination: ClaimsPagination
+}
+
+export interface EnrolleeClaimHistoryApiResponse {
+  status: string
+  data?: EnrolleeClaimHistoryData
+  message?: string
+  [key: string]: any
+}
+
+export function useEnrolleeClaimHistory(filters?: EnrolleeClaimHistoryFilters) {
+  const enabled = !!filters?.enrolee_id
+
+  return useQuery({
+    enabled,
+    queryKey: [
+      "enrollee-claim-history",
+      filters?.enrolee_id,
+      filters?.page ?? 1,
+      filters?.limit ?? 20,
+    ],
+    queryFn: async (): Promise<EnrolleeClaimHistoryApiResponse> => {
+      if (!filters?.enrolee_id) {
+        throw new Error("Missing enrolee_id")
+      }
+
+      const baseRequest = {
+        enrolee_id: filters.enrolee_id,
+        page: filters.page ?? 1,
+        limit: filters.limit ?? 20,
+      }
+
+      const res = await apiClient.post<EnrolleeClaimHistoryApiResponse>(
+        "/fetch-enrolee-claim-history.php",
+        baseRequest
+      )
+
+      const payload = res.data
+
+      if (!payload) {
+        throw new Error("Failed to fetch enrollee claim history")
+      }
+
+      const defaultPagination: ClaimsPagination = {
+        current_page: baseRequest.page,
+        per_page: baseRequest.limit,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false,
+      }
+
+      const baseData: EnrolleeClaimHistoryData = {
+        enrolee: {
+          id: 0,
+          enrolee_id: filters.enrolee_id,
+          full_name: "",
+        },
+        claims: [],
+        pagination: defaultPagination,
+      }
+
+      if (payload.status === "success") {
+        const incoming = payload.data
+
+        return {
+          ...payload,
+          data: {
+            enrolee: incoming?.enrolee ?? baseData.enrolee,
+            claims: Array.isArray(incoming?.claims) ? incoming.claims : [],
+            pagination: incoming?.pagination ?? defaultPagination,
+          },
+        }
+      }
+
+      if (payload.status === "empty") {
+        const incoming = payload.data
+
+        return {
+          ...payload,
+          data: {
+            ...baseData,
+            pagination: incoming?.pagination ?? defaultPagination,
+          },
+        }
+      }
+
+      throw new Error(
+        payload.message || "Failed to fetch enrollee claim history"
+      )
     },
   })
 }

@@ -372,7 +372,7 @@ export function EditEnrolleeForm({ enrollee }: EditEnrolleeFormProps) {
       trigger={
         <Button
           variant="outline"
-          className="w-full h-10 justify-start rounded-xl border-0 py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
+          className="w-fit h-10 justify-start rounded-xl border-0 py-2.5 px-3.5 flex items-center gap-2 bg-transparent text-[#344054] text-[14px]/[20px] tracking-normal font-semibold hover:bg-primary/5 hover:text-[#344054]"
         >
           <EditAltIcon /> Edit Profile
         </Button>

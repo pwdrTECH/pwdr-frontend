@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 import { useState } from "react";
 
-type StatusValue = "Pending" | "Approved";
+type StatusValue = "pending" | "completed";
 
 interface ClaimFiltersProps {
   search?: string;
@@ -35,7 +35,10 @@ export default function ClaimFilters({
   // local draft state used inside the popover before pressing "Apply"
   const [draftStatuses, setDraftStatuses] = useState<StatusValue[]>(statuses);
 
-  const statusOptions: StatusValue[] = ["Pending", "Approved"];
+  const statusOptions: { value: StatusValue; label: string }[] = [
+    { value: "pending", label: "Pending" },
+    { value: "completed", label: "Completed" },
+  ];
 
   // number of *applied* filters, not draft
   const activeCount = statuses.length;
@@ -109,17 +112,17 @@ export default function ClaimFilters({
             <div>
               <h3 className="font-semibold text-sm mb-3">Status</h3>
               <div className="space-y-2">
-                {statusOptions.map((status) => (
+                {statusOptions.map((opt) => (
                   <label
-                    htmlFor="status"
-                    key={status}
+                    htmlFor=""
+                    key={opt.value}
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <Checkbox
-                      checked={draftStatuses.includes(status)}
-                      onCheckedChange={() => toggleStatus(status)}
+                      checked={draftStatuses.includes(opt.value)}
+                      onCheckedChange={() => toggleStatus(opt.value)}
                     />
-                    <span className="text-sm text-foreground">{status}</span>
+                    <span className="text-sm text-foreground">{opt.label}</span>
                   </label>
                 ))}
               </div>

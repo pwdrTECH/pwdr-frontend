@@ -20,7 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClaims, type ClaimListItem } from "@/lib/api/claims";
+import type { ClaimListItem } from "@/lib/api/claims";
+import { useRequests } from "@/lib/api/requests";
 import { Search } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -172,16 +173,15 @@ export default function RequestStatusPage() {
   const [page, setPage] = useState(1);
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-
   const pageSize = 10;
   const controlsId = "request-status-table-body";
 
   /* ---------------------- FETCH CLAIMS FROM BACKEND ---------------------- */
 
-  const { data, isLoading, error } = useClaims({
+  const { data, isLoading, error } = useRequests({
     page: 1,
     limit: 500,
-    status: "", // fetch all; we filter by status locally
+    status: statusTab,
   });
 
   const claims = (data?.data as ClaimListItem[]) ?? [];

@@ -15,7 +15,7 @@ import { ProfileStats } from "./_components/stats";
 
 import { useEnrolleeDetails } from "@/lib/api/beneficiaries";
 import type { ClaimListItem } from "@/lib/api/claims";
-import { useClaims } from "@/lib/api/claims";
+import { useEnrolleeClaimHistory } from "@/lib/api/claims";
 import { EditEnrolleeForm } from "../_components/edit";
 import RestrictProfile from "../_components/restrict";
 import { UpgradePlan } from "../_components/upgrade";
@@ -30,7 +30,7 @@ function mapClaimListItemToClaim(item: ClaimListItem): Claim {
   const rawStatus = (item.status || "").toLowerCase();
 
   let status: Claim["status"];
-  if (rawStatus === "approved") status = "Approved";
+  if (rawStatus === "completed") status = "Completed";
   else if (rawStatus === "rejected" || rawStatus === "declined")
     status = "Rejected";
   else status = "Pending";
@@ -87,26 +87,19 @@ export default function BeneficiaryProfile() {
           .filter(Boolean)
           .join(" ")
       : fallbackName;
-
+  const enrolleeIdForHistory = enrollee?.enrolee_id ?? "";
   // Fetch claims for this enrollee using their internal id
   const {
     data: claimsResponse,
     isLoading: claimsLoading,
     isError: claimsError,
     error: claimsErrorObj,
-  } = useClaims(
-    enrollee?.id
-      ? {
-          enrolee_id: enrollee.id,
-          page: 1,
-          limit: 20,
-        }
-      : {},
-  );
-
-  const rawClaims: ClaimListItem[] = claimsResponse?.data ?? [];
-
-  // Map backend payload into UI model the table expects
+  } = useEnrolleeClaimHistory({
+    enrolee_id: enrolleeIdForHistory,
+    page: 1,
+    limit: 20,
+  });
+  const rawClaims: ClaimListItem[] = claimsResponse?.data?.claims ?? [];
   const uiClaims: Claim[] = React.useMemo(
     () => rawClaims.map(mapClaimListItemToClaim),
     [rawClaims],
@@ -116,13 +109,14 @@ export default function BeneficiaryProfile() {
     <div className="w-full flex flex-col gap-4">
       <Breadcrumbs />
 
-      {/* Action buttons */}
-      <div className="h-10 flex gap-4 justify-end py-1">
-        <UpgradePlan enrollee={enrollee ?? null} />
-        <RestrictProfile />
-        <EditEnrolleeForm enrollee={enrollee ?? null} />
+      <div className="w-full flex justify-end">
+        {/* Action buttons */}
+        <div className="h-10 flex gap-4 py-1">
+          <UpgradePlan enrollee={enrollee ?? null} />
+          <RestrictProfile />
+          <EditEnrolleeForm enrollee={enrollee ?? null} />
+        </div>
       </div>
-
       <Card className="px-8 rounded-2xl flex flex-col gap-6">
         {/* Loading / Error states */}
         {isLoading && (

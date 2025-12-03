@@ -22,7 +22,11 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useProcessClaim, useRequestDetails } from "@/lib/api/requests";
+import {
+  useProcessClaim,
+  useRequestDetails,
+  useSubmitRequest,
+} from "@/lib/api/requests";
 import * as React from "react";
 import { toast } from "sonner";
 import type { RequestItem, RequestStatus } from "./types";
@@ -88,6 +92,7 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
   const [reasonError, setReasonError] = React.useState("");
   const [assignedTo, setAssignedTo] = React.useState<string>("");
   const processClaim = useProcessClaim();
+  const submitClaimRequest = useSubmitRequest();
 
   /* ------------------------------------------------------------------------ */
   /*           BUILD PARAMS FOR useRequestDetails (claim_id OR tracking)      */
@@ -234,7 +239,6 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
       );
       setReasonText("");
     } catch (err: any) {
-      console.log("ERRR", err);
       toast.error(err?.message || "Failed to approve claim service.");
     }
   };
@@ -274,34 +278,18 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
   };
 
   // Footer "Submit" → approve all pending services
-  const onProcessClaim = async () => {
+  const onProcessClaimSubmit = async () => {
     if (!claim?.id) {
       toast.error("Missing claim id.");
       return;
     }
 
-    const pendingServices = services.filter(
-      (s: any) => (s.status ?? "").toLowerCase() === "pending",
-    );
-
-    if (pendingServices.length === 0) {
-      toast.info("No pending services to submit for this claim.");
-      return;
-    }
-
     try {
-      await Promise.all(
-        pendingServices.map((svc: any) =>
-          processClaim.mutateAsync({
-            claim_id: claim.id,
-            service_id: (svc.service_id ?? svc.id) as number,
-            status: "approved",
-            notes: reasonText.trim() || "Medically appropriate",
-          }),
-        ),
-      );
+      await submitClaimRequest.mutateAsync({
+        claim_id: claim.id,
+      });
 
-      toast.success("All pending services approved for this claim.");
+      toast.success("This claim has been submitted successfully");
       setReasonText("");
     } catch (err: any) {
       toast.error(err?.message || "Failed to submit claim.");
@@ -575,24 +563,13 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
                       confirmText="Submit"
                       trigger={<Button>Submit</Button>}
                       description={
-                        <div className="space-y-2">
-                          <Label>Note</Label>
-                          <Textarea
-                            value={reasonText}
-                            onChange={(e) => {
-                              setReasonText(e.target.value);
-                              if (reasonError) setReasonError("");
-                            }}
-                            className="bg-[#F8F8F8]"
-                          />
-                          {reasonError && (
-                            <span className="text-xs text-red-600">
-                              {reasonError}
-                            </span>
-                          )}
-                        </div>
+                        <p className="text-sm text-[#475367]">
+                          You are about to submit all pending services for this
+                          claim. Submitting will approve these services on
+                          behalf of the reviewer.
+                        </p>
                       }
-                      onConfirm={onProcessClaim}
+                      onConfirm={onProcessClaimSubmit}
                     />
                   </TableCell>
                 </TableRow>

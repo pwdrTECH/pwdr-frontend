@@ -25,6 +25,7 @@ import {
 import { useClaimDetails } from "@/lib/api/claims";
 import { X } from "lucide-react";
 import { useState } from "react";
+import type { Status } from "../page";
 
 interface ClaimDetailModalProps {
   claim:
@@ -38,7 +39,7 @@ interface ClaimDetailModalProps {
         serviceCount: number;
         submittedCost: string;
         totalCost: string;
-        status: "Pending" | "Approved";
+        status: Status;
       }
     | null
     | undefined;

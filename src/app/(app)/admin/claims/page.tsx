@@ -26,7 +26,7 @@ import { EmptyState } from "../_components/EmptyState";
 import ClaimDetailModal from "./_components/detail";
 import ClaimFilters from "./_components/filter";
 
-type Status = "Pending" | "Approved";
+export type Status = "pending" | "completed";
 
 interface Claim {
   id: string;
@@ -150,9 +150,6 @@ export default function ClaimsPage() {
       })}`;
 
     return claimsResponse.data.map((c: any): Claim => {
-      const statusRaw = String(c.status ?? "").toLowerCase();
-      const status: Status = statusRaw === "approved" ? "Approved" : "Pending";
-
       const enrolleeFirst = c.enrolee_first_name ?? "";
       const enrolleeSurname = c.enrolee_surname ?? "";
       const enrolleeFullName =
@@ -178,7 +175,7 @@ export default function ClaimsPage() {
         serviceCount: 0, // adjust if API later exposes services count
         submittedCost: formatNaira(submitted),
         totalCost: formatNaira(total),
-        status,
+        status: c.status ?? "",
         utilizationUsed: undefined,
       };
     });
@@ -404,13 +401,17 @@ export default function ClaimsPage() {
                     <TableCell className="text-center">
                       <Badge
                         variant={
-                          claim.status === "Approved" ? "default" : "secondary"
+                          claim.status?.toLowerCase() === "approved" ||
+                          claim.status?.toLowerCase() === "completed"
+                            ? "default"
+                            : "secondary"
                         }
-                        className={
-                          claim.status === "Approved"
+                        className={`capitalize ${
+                          claim.status?.toLowerCase() === "approved" ||
+                          claim.status?.toLowerCase() === "completed"
                             ? "bg-emerald-100 text-emerald-700"
                             : "bg-gray-100 text-gray-600"
-                        }
+                        }`}
                       >
                         {claim.status}
                       </Badge>

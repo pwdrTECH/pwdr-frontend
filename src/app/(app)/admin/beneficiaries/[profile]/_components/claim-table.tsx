@@ -17,13 +17,15 @@ import { cn } from "@/lib/utils";
 import * as React from "react";
 
 // 🔹 Export this so we can reuse it in BeneficiaryProfile
+export type ClaimStatus = "pending" | "completed" | "approved" | "rejected";
+
 export interface Claim {
   claimId: string;
   diagnosis: string;
   service: string;
   drug: string;
   cost: string;
-  status: "Approved" | "Rejected" | "Pending";
+  status: ClaimStatus | string; // keep flexible in case API gives lowercase
   date: string;
 }
 
@@ -31,32 +33,38 @@ interface ClaimsTableProps {
   claims?: Claim[];
 }
 
-function getStatusBadgeStyles(status: string) {
-  switch (status) {
-    case "Approved":
-      return "bg-[#E7EFFC] text-primary";
-    case "Rejected":
-      return "bg-[#F8D4D4] text-[#D90F0F]";
-    case "Pending":
-      return "bg-amber-50 text-amber-600";
-    default:
-      return "bg-gray-50 text-gray-600";
+function getStatusBadgeStyles(status: Claim["status"]) {
+  const s = String(status).toLowerCase();
+  if (s === "pending") {
+    return "bg-amber-50 text-amber-600";
   }
+  if (s === "completed") {
+    return "bg-[#ECFDF3] text-[#166534]";
+  }
+  if (s === "approved") {
+    return "bg-[#E7EFFC] text-primary";
+  }
+  if (s === "rejected") {
+    return "bg-[#F8D4D4] text-[#D90F0F]";
+  }
+  return "bg-gray-50 text-gray-600";
 }
 
+type TabValue = "all" | "pending" | "completed";
+
 export default function ClaimsTable({ claims = [] }: ClaimsTableProps) {
-  const [activeTab, setActiveTab] = React.useState("all");
+  const [activeTab, setActiveTab] = React.useState<TabValue>("all");
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
 
   const filteredClaims = React.useMemo(() => {
+    const normalize = (s: Claim["status"]) => String(s).toLowerCase();
+
     switch (activeTab) {
-      case "approved":
-        return claims.filter((c) => c.status === "Approved");
-      case "rejected":
-        return claims.filter((c) => c.status === "Rejected");
       case "pending":
-        return claims.filter((c) => c.status === "Pending");
+        return claims.filter((c) => normalize(c.status) === "pending");
+      case "completed":
+        return claims.filter((c) => normalize(c.status) === "completed");
       default:
         return claims;
     }
@@ -69,13 +77,16 @@ export default function ClaimsTable({ claims = [] }: ClaimsTableProps) {
 
   return (
     <div className="w-full border border-[#EAECF0] rounded-lg">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as TabValue)}
+        className="w-full"
+      >
         <div className="border-b border-[#EAECF0] px-6 pt-6">
           <TabsList className="gap-8 bg-transparent p-0 h-auto border-b-0">
             <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="approved">Approved</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
         </div>
 
@@ -96,91 +107,94 @@ export default function ClaimsTable({ claims = [] }: ClaimsTableProps) {
               </TableHeader>
 
               <TableBody id={controlsId}>
-                {slice.map((claim) => (
-                  <TableRow
-                    key={claim.claimId}
-                    className="hover:bg-gray-50 border-b border-gray-100"
-                  >
-                    <TableCell className="pl-6">
-                      <div className="font-medium text-[14px] text-[#293347]">
-                        {claim.claimId}
-                      </div>
-                    </TableCell>
+                {slice.map((claim) => {
+                  return (
+                    <TableRow
+                      key={claim.claimId}
+                      className="hover:bg-gray-50 border-b border-gray-100"
+                    >
+                      <TableCell className="pl-6">
+                        <div className="font-medium text-[14px] text-[#293347]">
+                          {claim.claimId}
+                        </div>
+                      </TableCell>
 
-                    <TableCell className="text-[14px] text-[#636E7D]">
-                      {claim.diagnosis}
-                    </TableCell>
+                      <TableCell className="text-[14px] text-[#636E7D]">
+                        {claim.diagnosis}
+                      </TableCell>
 
-                    <TableCell className="text-[14px] text-[#636E7D]">
-                      {claim.service}
-                    </TableCell>
+                      <TableCell className="text-[14px] text-[#636E7D]">
+                        {claim.service}
+                      </TableCell>
 
-                    <TableCell className="text-[14px] text-[#636E7D]">
-                      {claim.drug}
-                    </TableCell>
+                      <TableCell className="text-[14px] text-[#636E7D]">
+                        {claim.drug}
+                      </TableCell>
 
-                    <TableCell className="text-[14px] text-[#636E7D]">
-                      {claim.cost}
-                    </TableCell>
+                      <TableCell className="text-[14px] text-[#636E7D]">
+                        {claim.cost}
+                      </TableCell>
 
-                    <TableCell>
-                      <Badge
-                        className={cn(
-                          "text-xs border-0",
-                          getStatusBadgeStyles(claim.status),
-                        )}
-                      >
-                        {claim.status}
-                      </Badge>
-                    </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={cn(
+                            "text-xs border-0",
+                            getStatusBadgeStyles(claim.status),
+                          )}
+                        >
+                          {String(claim.status).charAt(0).toUpperCase() +
+                            String(claim.status).slice(1).toLowerCase()}
+                        </Badge>
+                      </TableCell>
 
-                    <TableCell className="text-[14px] text-[#636E7D]">
-                      {claim.date}
-                    </TableCell>
+                      <TableCell className="text-[14px] text-[#636E7D]">
+                        {claim.date}
+                      </TableCell>
 
-                    <TableCell>
-                      <RowMenu
-                        items={[
-                          {
-                            type: "button",
-                            button: (
-                              <button
-                                type="button"
-                                className="p-1 hover:bg-gray-200 rounded transition-colors"
-                              >
-                                View Details
-                              </button>
-                            ),
-                          },
-                          "separator",
-                          {
-                            type: "button",
-                            button: (
-                              <button
-                                type="button"
-                                className="p-1 hover:bg-gray-200 rounded transition-colors"
-                              >
-                                Edit
-                              </button>
-                            ),
-                          },
-                          "separator",
-                          {
-                            type: "button",
-                            button: (
-                              <button
-                                type="button"
-                                className="p-1 hover:bg-gray-200 rounded transition-colors"
-                              >
-                                Delete
-                              </button>
-                            ),
-                          },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell>
+                        <RowMenu
+                          items={[
+                            {
+                              type: "button",
+                              button: (
+                                <button
+                                  type="button"
+                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                >
+                                  View Details
+                                </button>
+                              ),
+                            },
+                            "separator",
+                            {
+                              type: "button",
+                              button: (
+                                <button
+                                  type="button"
+                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              ),
+                            },
+                            "separator",
+                            {
+                              type: "button",
+                              button: (
+                                <button
+                                  type="button"
+                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              ),
+                            },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
 
                 {slice.length === 0 && (
                   <TableRow>
