@@ -1,7 +1,8 @@
-import { AppProviders } from "@/components/providers/AppProviders"
-import type { Metadata } from "next"
-import localFont from "next/font/local"
-import "./globals.css"
+import { AppProviders } from "@/components/providers/AppProviders";
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export const hnd = localFont({
   src: [
@@ -24,7 +25,7 @@ export const hnd = localFont({
   variable: "--font-helvetica-now-display",
   display: "swap",
   preload: true,
-})
+});
 export const metadata: Metadata = {
   title: "Powder",
   description:
@@ -45,18 +46,19 @@ export const metadata: Metadata = {
     url: "https://powder.health",
     type: "website",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
       <body className={`${hnd.variable} antialiased`}>
         <AppProviders>{children}</AppProviders>
+        <Toaster />
       </body>
     </html>
-  )
+  );
 }

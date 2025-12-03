@@ -1,97 +1,38 @@
-"use client"
+"use client";
 
 import {
   EndCallIcon,
   HalfLogoIcon,
   OngoingCallIcon,
   TransferredAltIcon,
-} from "@/components/svgs"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import { Search } from "lucide-react"
-import * as React from "react"
-import { useCallAgent } from "../_state"
-
-export type QueueItem = {
-  id: string
-  hospital: string
-  by: string
-  stamp: string
-  status: "Ongoing" | "Transferred" | "Ended"
-}
-
-const PENDING: QueueItem[] = [
-  {
-    id: "q1",
-    hospital: "Hospital ABC",
-    by: "Powder AI",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Ongoing",
-  },
-  {
-    id: "q2",
-    hospital: "Hospital ABC",
-    by: "Powder AI",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Transferred",
-  },
-  {
-    id: "q3",
-    hospital: "Hospital ABC",
-    by: "Powder AI",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Transferred",
-  },
-  {
-    id: "q4",
-    hospital: "Hospital ABC",
-    by: "Powder AI",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Ongoing",
-  },
-]
-const RESOLVED: QueueItem[] = [
-  {
-    id: "r1",
-    hospital: "Ife Ogechi",
-    by: "John Doe",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Ended",
-  },
-  {
-    id: "r2",
-    hospital: "Azeez Osita",
-    by: "John Doe",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Ended",
-  },
-  {
-    id: "r3",
-    hospital: "Emeka Kafilat",
-    by: "John Doe",
-    stamp: "12/10/23 · 9:32AM",
-    status: "Ended",
-  },
-]
+} from "@/components/svgs";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import * as React from "react";
+import { useCallAgent, type QueueItem } from "../_state";
 
 export function QueueColumn() {
   const [tab, setTab] = React.useState<"pending" | "resolved" | "all">(
-    "pending"
-  )
-  const [q, setQ] = React.useState("")
-  const { selectCall, state } = useCallAgent()
+    "pending",
+  );
+  const [q, setQ] = React.useState("");
+  const { selectCall, state } = useCallAgent();
 
   const list = React.useMemo(() => {
-    const pool =
+    const pool = state.queue;
+
+    const filteredByTab =
       tab === "pending"
-        ? PENDING
+        ? pool.filter((c) => c.status !== "Ended")
         : tab === "resolved"
-        ? RESOLVED
-        : [...PENDING, ...RESOLVED]
-    return pool.filter((r) =>
-      [r.hospital, r.by].join(" ").toLowerCase().includes(q.toLowerCase())
-    )
-  }, [tab, q])
+          ? pool.filter((c) => c.status === "Ended")
+          : pool;
+
+    return filteredByTab.filter((r) =>
+      [r.hospital, r.by].join(" ").toLowerCase().includes(q.toLowerCase()),
+    );
+  }, [tab, q, state.queue]);
 
   return (
     <section className="flex flex-col gap-[11px]">
@@ -131,13 +72,14 @@ export function QueueColumn() {
       <div className="w-[284px] pr-[13px] max-height-[752px] overflow-y-auto flex flex-col gap-[16px]">
         {list.map((item) => (
           <button
+            type="button"
             key={item.id}
             onClick={() => selectCall(item.id)}
             className={cn(
               "w-[271px] h-[82px] flex gap-3 py-[18px] px-4 rounded-[12px] border text-left transition",
               state.callId === item.id
                 ? "border-[#1671D91A] bg-[#1671D912]"
-                : "border-[#EAECF0] bg-[#F9F9F9] hover:bg-[#FFFFFF1A]"
+                : "border-[#EAECF0] bg-[#F9F9F9] hover:bg-[#FFFFFF1A]",
             )}
           >
             <div className="w-[239px] h-[46px] flex flex-col items-center justify-between gap-2">
@@ -163,7 +105,7 @@ export function QueueColumn() {
         ))}
       </div>
     </section>
-  )
+  );
 }
 
 function Tab({
@@ -171,23 +113,24 @@ function Tab({
   onClick,
   children,
 }: {
-  active?: boolean
-  onClick?: () => void
-  children: React.ReactNode
+  active?: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         "w-fit h-[23px] rounded-[6px] flex items-center gap-2 py-[6px] px-2 font-hnd font-medium text-[14px] leading-[100%] align-middle cursor-pointer",
         active
           ? "bg-[#1671D91A] text-[#1671D9] font-medium"
-          : "text-[#475467] hover:bg-[#1671D91A] hover:text-[#1671D9] font-normal tracking-normal"
+          : "text-[#475467] hover:bg-[#1671D91A] hover:text-[#1671D9] font-normal tracking-normal",
       )}
     >
       {children}
     </button>
-  )
+  );
 }
 
 function Pill({ kind }: { kind: QueueItem["status"] }) {
@@ -207,17 +150,17 @@ function Pill({ kind }: { kind: QueueItem["status"] }) {
       text: "text-[#475467]",
       icon: <EndCallIcon />,
     },
-  }[kind]
+  }[kind];
   return (
     <span
       className={cn(
         "w-fit h-[20px] py-1 px-[6px] flex items-center gap-[3px] rounded-[16px] text-[12px]",
         map.bg,
-        map.text
+        map.text,
       )}
     >
       {map.icon}
       <span>{kind}</span>
     </span>
-  )
+  );
 }

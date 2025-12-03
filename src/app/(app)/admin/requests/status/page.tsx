@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import { DateRangePicker } from "@/components/filters/date-range";
 import {
   CircledApprovedIconAlt,
   IdCardIcon,
@@ -9,11 +9,7 @@ import {
 } from "@/components/svgs";
 import TablePagination from "@/components/table/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -23,10 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClaims, type ClaimListItem } from "@/lib/api/claims";
+import { Search } from "lucide-react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type RequestStatus = "Approved" | "Rejected" | "Pending";
-type TimeFilter = "Day" | "Month" | "Year" | "All";
 
 interface Request {
   id: string;
@@ -37,14 +36,13 @@ interface Request {
   drug: string;
   cost: string;
   status: RequestStatus;
-  date: string; // e.g. "12/10/23" (dd/mm/yy)
+  date: string; // "dd/mm/yy"
 }
 
 /* -------------------------------------------------------------------------- */
 /*                         MAPPING: API → TABLE ROW                           */
 /* -------------------------------------------------------------------------- */
 
-// Map backend status → UI status label
 function mapApiStatusToRequestStatus(
   apiStatus: string | null | undefined,
 ): RequestStatus {
@@ -61,7 +59,7 @@ function formatDateToDMY(value: string | number | null | undefined): string {
   let dt: Date;
 
   if (typeof value === "number") {
-    // assume it's a unix timestamp (seconds)
+    // assume unix seconds if short
     if (value.toString().length <= 10) {
       dt = new Date(value * 1000);
     } else {
@@ -79,22 +77,15 @@ function formatDateToDMY(value: string | number | null | undefined): string {
   return `${dd}/${mm}/${yy}`;
 }
 
-// Map ClaimListItem from API into the UI Request row
 function mapClaimToRequestRow(c: ClaimListItem): Request {
   const enrolleeName =
     [c.enrolee_first_name ?? "", c.enrolee_surname ?? ""].join(" ").trim() ||
     (c.enrolee_code ?? "");
 
   const diagnosis = c.diagnosis ?? "-";
-
-  // You don't have a single "services" field – use channel/plan/lab as a proxy
   const services = c.lab ?? c.radiology ?? c.channel ?? c.plan_name ?? "—";
-
-  // Use prescription as "drug" if present
   const drug = c.prescription ?? "—";
-
-  // No explicit cost field in ClaimListItem; show "—" for now
-  const cost = "—";
+  const cost = "—"; // no explicit cost in ClaimListItem yet
 
   const status = mapApiStatusToRequestStatus(c.status);
   const date = formatDateToDMY(c.encounter_date || c.date_created);
@@ -113,10 +104,9 @@ function mapClaimToRequestRow(c: ClaimListItem): Request {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                          HELPERS: DATE FILTERING                           */
+/*                          HELPERS: DATE PARSING                             */
 /* -------------------------------------------------------------------------- */
 
-// parse "dd/mm/yy" safely; falls back to native Date if not in that format
 function parseDMY(d: string): Date | null {
   const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (m) {
@@ -130,24 +120,6 @@ function parseDMY(d: string): Date | null {
   const dt = new Date(d);
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
-
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-function sameMonth(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-}
-function sameYear(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear();
-}
-
-/* -------------------------------------------------------------------------- */
-/*                              STATUS BADGE COLOR                            */
-/* -------------------------------------------------------------------------- */
 
 const getStatusColor = (status: RequestStatus) => {
   switch (status) {
@@ -194,40 +166,30 @@ const StatCard = ({
 
 export default function RequestStatusPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("All");
   const [statusTab, setStatusTab] = useState<
     "all" | "approved" | "pending" | "rejected"
   >("all");
   const [page, setPage] = useState(1);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+
   const pageSize = 10;
   const controlsId = "request-status-table-body";
 
   /* ---------------------- FETCH CLAIMS FROM BACKEND ---------------------- */
-  // We fetch "all" statuses and do filtering on the client
+
   const { data, isLoading, error } = useClaims({
     page: 1,
-    limit: 500, // adjust as needed
-    status: "", // "" → no backend status filter; we filter locally
+    limit: 500,
+    status: "", // fetch all; we filter by status locally
   });
 
   const claims = (data?.data as ClaimListItem[]) ?? [];
 
-  // Normalize into the table row shape
   const allRequests: Request[] = useMemo(
     () => claims.map((c) => mapClaimToRequestRow(c)),
     [claims],
   );
-
-  // latest date in data -> reference for Day/Month/Year filters
-  const latestDate = useMemo(() => {
-    let latest: Date | null = null;
-    for (const r of allRequests) {
-      const d = parseDMY(r.date);
-      if (!d) continue;
-      if (!latest || d > latest) latest = d;
-    }
-    return latest;
-  }, [allRequests]);
 
   /* ------------------------------ 1) SEARCH ------------------------------ */
 
@@ -252,45 +214,70 @@ export default function RequestStatusPage() {
     });
   }, [searchQuery, allRequests]);
 
-  /* ------------------------------ 2) TIME ------------------------------- */
+  /* ----------------------------- 2) DATE RANGE --------------------------- */
 
-  const timeFiltered = useMemo(() => {
-    if (timeFilter === "All" || !latestDate) return searchFiltered;
+  const dateFiltered = useMemo(() => {
+    if (!dateFrom && !dateTo) return searchFiltered;
+
     return searchFiltered.filter((r) => {
       const d = parseDMY(r.date);
       if (!d) return false;
-      if (timeFilter === "Day") return sameDay(d, latestDate);
-      if (timeFilter === "Month") return sameMonth(d, latestDate);
-      if (timeFilter === "Year") return sameYear(d, latestDate);
+
+      if (dateFrom) {
+        const start = new Date(
+          dateFrom.getFullYear(),
+          dateFrom.getMonth(),
+          dateFrom.getDate(),
+          0,
+          0,
+          0,
+          0,
+        );
+        if (d < start) return false;
+      }
+
+      if (dateTo) {
+        const end = new Date(
+          dateTo.getFullYear(),
+          dateTo.getMonth(),
+          dateTo.getDate(),
+          23,
+          59,
+          59,
+          999,
+        );
+        if (d > end) return false;
+      }
+
       return true;
     });
-  }, [searchFiltered, timeFilter, latestDate]);
+  }, [searchFiltered, dateFrom, dateTo]);
 
   /* ---------------------------- 3) STATUS TAB --------------------------- */
 
   const tableFiltered = useMemo(() => {
     switch (statusTab) {
       case "approved":
-        return timeFiltered.filter((r) => r.status === "Approved");
+        return dateFiltered.filter((r) => r.status === "Approved");
       case "pending":
-        return timeFiltered.filter((r) => r.status === "Pending");
+        return dateFiltered.filter((r) => r.status === "Pending");
       case "rejected":
-        return timeFiltered.filter((r) => r.status === "Rejected");
+        return dateFiltered.filter((r) => r.status === "Rejected");
       default:
-        return timeFiltered;
+        return dateFiltered;
     }
-  }, [timeFiltered, statusTab]);
+  }, [dateFiltered, statusTab]);
 
   /* -------------------------- STATS (CARDS) ----------------------------- */
-  // Stats reflect search + time filters, not the status sub-filter
-  const statTotal = timeFiltered.length;
-  const statApproved = timeFiltered.filter(
+
+  const statTotal = dateFiltered.length;
+  const statApproved = dateFiltered.filter(
     (r) => r.status === "Approved",
   ).length;
-  const statRejected = timeFiltered.filter(
+  const statRejected = dateFiltered.filter(
     (r) => r.status === "Rejected",
   ).length;
-  const statPending = timeFiltered.filter((r) => r.status === "Pending").length;
+  const statPending = dateFiltered.filter((r) => r.status === "Pending").length;
 
   /* ----------------------------- PAGINATION ----------------------------- */
 
@@ -324,7 +311,7 @@ export default function RequestStatusPage() {
                 <TabsTrigger value="rejected">Rejected Requests</TabsTrigger>
               </TabsList>
 
-              {/* Search + Time filter */}
+              {/* Search + Date range filter */}
               <div className="flex gap-4 items-center px-[6px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -337,29 +324,18 @@ export default function RequestStatusPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  {(["Day", "Month", "Year", "All"] as TimeFilter[]).map(
-                    (filter) => (
-                      <Button
-                        key={filter}
-                        variant={timeFilter === filter ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setTimeFilter(filter)}
-                        className={
-                          timeFilter === filter
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-gray-700 border-gray-300"
-                        }
-                      >
-                        {filter}
-                      </Button>
-                    ),
-                  )}
+                  <DateRangePicker
+                    onChange={(start, end) => {
+                      setDateFrom(start ? new Date(start) : undefined);
+                      setDateTo(end ? new Date(end) : undefined);
+                    }}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Stat Cards (reflect search + time) */}
+          {/* Stat Cards (reflect search + date range) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 py-6 px-8">
             <StatCard
               title="Total Request"
@@ -485,7 +461,6 @@ export default function RequestStatusPage() {
             </Table>
           </TableContainer>
 
-          {/* Pagination (client-side) */}
           <TablePagination
             page={page}
             onPageChange={setPage}

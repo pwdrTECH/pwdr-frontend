@@ -1,7 +1,8 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
+import type { SimpleApiResponse } from "./types"
 
 /* ========= Types ========= */
 
@@ -112,8 +113,15 @@ export interface RequestsApiResponse {
   [key: string]: any
 }
 
+export type ProcessClaimPayload = {
+  claim_id: number
+  service_id: number
+  status: string
+  notes: string
+}
+
 /* ============================
-    POST /fetch-requests.php
+   /fetch-requests.php
 ============================ */
 
 export function useRequests(filters: RequestFilters = {}) {
@@ -174,7 +182,7 @@ export function useRequests(filters: RequestFilters = {}) {
     },
   })
 }
-/* ========= Detail: POST /fetch-request-details.php ========= */
+/* ========= Detail: /fetch-request-details.php ========= */
 
 export interface RequestDetailsApiResponse {
   status: string
@@ -196,6 +204,36 @@ export function useRequestDetails(params?: RequestDetailParams) {
     queryFn: async () => {
       const res = await apiClient.post("/fetch-request-details.php", params)
       return res.data
+    },
+  })
+}
+/* ============================
+    Process claim 
+============================ */
+
+export function useProcessClaim() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: ProcessClaimPayload) => {
+      const response = await apiClient.post<SimpleApiResponse>(
+        "/process-claim-service.php",
+        payload
+      )
+      const apiResponse = response.data
+
+      if (!apiResponse || apiResponse.status !== "success") {
+        if (apiResponse?.status === "exist") {
+          throw new Error("This claim service has already been processed")
+        }
+        throw new Error(apiResponse?.message || "Failed to process claim")
+      }
+
+      return apiResponse
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requests"] })
+      queryClient.invalidateQueries({ queryKey: ["request-detail"] })
     },
   })
 }

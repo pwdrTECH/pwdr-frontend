@@ -22,12 +22,11 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useProcessClaim, useRequestDetails } from "@/lib/api/requests";
 import * as React from "react";
+import { toast } from "sonner";
 import type { RequestItem, RequestStatus } from "./types";
 import { STATUS_BADGE, STATUS_LABEL } from "./types";
-import { useRequestDetails } from "@/lib/api/requests";
-import { useProcessClaim } from "@/lib/api/claims";
-import { toast } from "sonner";
 
 /* -------------------------------------------------------------------------- */
 /*                               HELPER: AGE FROM DOB                         */
@@ -227,7 +226,7 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
         claim_id: claim.id,
         service_id: serviceId,
         status: "approved",
-        note: reasonText.trim(),
+        notes: reasonText.trim(),
       });
 
       toast.success(
@@ -235,6 +234,7 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
       );
       setReasonText("");
     } catch (err: any) {
+      console.log("ERRR", err);
       toast.error(err?.message || "Failed to approve claim service.");
     }
   };
@@ -262,7 +262,7 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
         claim_id: claim.id,
         service_id: serviceId,
         status: "queried",
-        note: reasonText.trim(),
+        notes: reasonText.trim(),
       });
 
       toast.success(`Service "${serviceName}" (${amount}) marked as queried.`);
@@ -296,7 +296,7 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
             claim_id: claim.id,
             service_id: (svc.service_id ?? svc.id) as number,
             status: "approved",
-            note: reasonText.trim(),
+            notes: reasonText.trim() || "Medically appropriate",
           }),
         ),
       );
@@ -450,119 +450,116 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
               </TableHeader>
 
               <TableBody>
-                {treatmentItems.map((item: any) => (
-                  <TableRow key={item.id} className="border-b">
-                    <TableCell>{item.service}</TableCell>
-                    <TableCell className="text-right">{item.qty}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell className="text-right">
-                      {item.submittedBill}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.action === "Approve" && (
-                        <div className="flex items-center gap-[11px] justify-center">
-                          {/* APPROVE SERVICE */}
-                          <ConfirmDialog
-                            variant="info"
-                            title="Confirm Service Approval"
-                            confirmText="Yes, Approve"
-                            trigger={
-                              <Button className="hover:text-[#1671D9] hover:bg-[#EDF5FF]">
-                                Approve
-                              </Button>
-                            }
-                            description={
-                              <div>
-                                <p className="text-sm text-[#475367]">
-                                  Approve <strong>{item.service}</strong> for{" "}
-                                  <strong>{item.submittedBill}</strong>? This
-                                  will mark the service as medically appropriate
-                                  for this claim.
-                                </p>
-                                <Textarea
-                                  value={reasonText}
-                                  onChange={(e) => {
-                                    setReasonText(e.target.value);
-                                    if (reasonError) setReasonError("");
-                                  }}
-                                  className="bg-[#F8F8F8]"
-                                />
-                                {reasonError && (
-                                  <span className="text-xs text-red-600">
-                                    {reasonError}
-                                  </span>
-                                )}
-                              </div>
-                            }
-                            onConfirm={() =>
-                              handleApproveService(
-                                item.serviceId as number,
-                                item.service,
-                                item.submittedBill,
-                              )
-                            }
-                          />
+                {treatmentItems.map((item: any) => {
+                  return (
+                    <TableRow key={item.id} className="border-b">
+                      <TableCell>{item.service}</TableCell>
+                      <TableCell className="text-right">{item.qty}</TableCell>
+                      <TableCell>{item.category}</TableCell>
+                      <TableCell className="text-right">
+                        {item.submittedBill}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.action === "Approve" && (
+                          <div className="flex items-center gap-[11px] justify-center">
+                            {/* APPROVE SERVICE */}
+                            <ConfirmDialog
+                              variant="info"
+                              title="Confirm Claim Approval"
+                              confirmText="Approve"
+                              trigger={
+                                <Button className="hover:text-[#1671D9] hover:bg-[#EDF5FF]">
+                                  Approve
+                                </Button>
+                              }
+                              description={
+                                <div className="flex flex-col gap-2">
+                                  <Label>Note</Label>
+                                  <Textarea
+                                    value={reasonText}
+                                    onChange={(e) => {
+                                      setReasonText(e.target.value);
+                                      if (reasonError) setReasonError("");
+                                    }}
+                                    className="bg-[#F8F8F8]"
+                                  />
+                                  {reasonError && (
+                                    <span className="text-xs text-red-600">
+                                      {reasonError}
+                                    </span>
+                                  )}
+                                </div>
+                              }
+                              onConfirm={() =>
+                                handleApproveService(
+                                  item.serviceId as number,
+                                  item.service,
+                                  item.submittedBill,
+                                )
+                              }
+                            />
 
-                          {/* QUERY SERVICE */}
-                          <ConfirmDialog
-                            title="Reason for Query"
-                            confirmText="Submit"
-                            trigger={
-                              <Button
-                                variant="outline"
-                                className="hover:bg-transparent hover:text-black"
-                              >
-                                Query
-                              </Button>
-                            }
-                            description={
-                              <div className="space-y-2">
-                                <p className="text-sm text-[#475367]">
-                                  Provide a reason for querying{" "}
-                                  <strong>{item.service}</strong> (
-                                  {item.submittedBill}).
-                                </p>
-                                <Label title="Reason for Query" />
-                                <Textarea
-                                  value={reasonText}
-                                  onChange={(e) => {
-                                    setReasonText(e.target.value);
-                                    if (reasonError) setReasonError("");
-                                  }}
-                                  className="bg-[#F8F8F8]"
-                                />
-                                {reasonError && (
-                                  <span className="text-xs text-red-600">
-                                    {reasonError}
-                                  </span>
-                                )}
-                              </div>
-                            }
-                            onConfirm={() =>
-                              handleQueryService(
-                                item.serviceId as number,
-                                item.service,
-                                item.submittedBill,
-                              )
-                            }
-                          />
-                        </div>
-                      )}
+                            {/* QUERY SERVICE */}
+                            <ConfirmDialog
+                              title="Reason for Query"
+                              confirmText="Submit"
+                              trigger={
+                                <Button
+                                  variant="outline"
+                                  className="hover:bg-transparent hover:text-black"
+                                >
+                                  Query
+                                </Button>
+                              }
+                              description={
+                                <div className="space-y-2">
+                                  <p className="text-sm text-[#475367]">
+                                    Provide a reason for querying{" "}
+                                    <strong>{item.service}</strong> (
+                                    {item.submittedBill}).
+                                  </p>
+                                  <Label title="Reason for Query" />
+                                  <Textarea
+                                    value={reasonText}
+                                    onChange={(e) => {
+                                      setReasonText(e.target.value);
+                                      if (reasonError) setReasonError("");
+                                    }}
+                                    className="bg-[#F8F8F8]"
+                                  />
+                                  {reasonError && (
+                                    <span className="text-xs text-red-600">
+                                      {reasonError}
+                                    </span>
+                                  )}
+                                </div>
+                              }
+                              onConfirm={() =>
+                                handleQueryService(
+                                  item.serviceId as number,
+                                  item.service,
+                                  item.submittedBill,
+                                )
+                              }
+                            />
+                          </div>
+                        )}
 
-                      {item.action === "Queried" && (
-                        <Badge className="bg-[#F7F7F7] text-[#767676]">
-                          Queried
-                        </Badge>
-                      )}
+                        {item.action === "Queried" && (
+                          <Badge className="bg-[#F7F7F7] text-[#767676]">
+                            Queried
+                          </Badge>
+                        )}
 
-                      {item.action === "Approved" && (
-                        <Badge className="bg-[#ECFDF3] text-[#166534]">
-                          Approved
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        {item.action === "Approved" && (
+                          <Badge className="bg-[#ECFDF3] text-[#166534]">
+                            Approved
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
 
                 <TableRow className="bg-[#E3EFFC42]">
                   <TableCell colSpan={3}>
@@ -573,15 +570,27 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <ConfirmDialog
+                      variant="info"
                       title="Confirm Submit"
-                      confirmText="Yes, Submit"
+                      confirmText="Submit"
                       trigger={<Button>Submit</Button>}
                       description={
-                        <p className="text-sm text-[#475367]">
-                          Submit this claim by approving all{" "}
-                          <strong>pending</strong> services as medically
-                          appropriate?
-                        </p>
+                        <div className="space-y-2">
+                          <Label>Note</Label>
+                          <Textarea
+                            value={reasonText}
+                            onChange={(e) => {
+                              setReasonText(e.target.value);
+                              if (reasonError) setReasonError("");
+                            }}
+                            className="bg-[#F8F8F8]"
+                          />
+                          {reasonError && (
+                            <span className="text-xs text-red-600">
+                              {reasonError}
+                            </span>
+                          )}
+                        </div>
                       }
                       onConfirm={onProcessClaim}
                     />

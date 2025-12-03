@@ -1,9 +1,9 @@
 "use client";
 
-import * as React from "react";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import * as React from "react";
 
 import {
   BillingIcon,
@@ -19,6 +19,7 @@ import {
 } from "@/components/svgs";
 import { AppLogo } from "@/components/svgs/logo";
 import { Badge } from "@/components/ui/badge";
+import { useRequests } from "@/lib/api/requests";
 
 type NavItem = {
   href: string;
@@ -33,6 +34,16 @@ type NavItem = {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: requestsData } = useRequests({
+    status: "unread",
+    page: 1,
+    limit: 1,
+  });
+  const newRequestsCount =
+    requestsData?.pagination?.total && requestsData.pagination.total > 0
+      ? requestsData.pagination.total
+      : 0;
+
   const nav: NavItem[] = [
     { href: "/admin/dashboard", label: "Dashboard", icon: DashboardIcon },
     {
@@ -72,7 +83,14 @@ export function Sidebar() {
         <nav className="flex flex-col gap-3">
           <ul className="space-y-1">
             {nav.map((item) => (
-              <SidebarItem key={item.href} item={item} pathname={pathname} />
+              <SidebarItem
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                badgeCount={
+                  item.href === "/admin/requests" ? newRequestsCount : undefined
+                }
+              />
             ))}
           </ul>
         </nav>
@@ -81,17 +99,26 @@ export function Sidebar() {
   );
 }
 
-function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
-  const requestAvailable = true;
+function SidebarItem({
+  item,
+  pathname,
+  badgeCount = 0,
+}: {
+  item: NavItem;
+  pathname: string;
+  badgeCount?: number;
+}) {
   const Icon = item.icon;
   const isActiveParent =
-    pathname === item.href || pathname.startsWith(item.href + "/");
+    pathname === item.href || pathname.startsWith(`${item.href}/`);
   const [open, setOpen] = React.useState<boolean>(isActiveParent);
 
   // Keep section expanded when navigating inside it
   React.useEffect(() => {
     if (isActiveParent) setOpen(true);
   }, [isActiveParent]);
+
+  const hasBadge = badgeCount > 0;
 
   const baseLinkClasses =
     "flex h-[44px] items-center gap-2 rounded-[12px] px-4 py-3 font-hnd text-[14px]/[20px] tracking-normal transition";
@@ -141,9 +168,9 @@ function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
             onClick={() => setOpen((v) => !v)}
             className="ml-auto mr-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-[#667085] hover:bg-[#F2F4F7]"
           >
-            {requestAvailable ? (
-              <Badge className="w-6 h-[17px] bg-[#CC0C16] text-white px-2 rounded-[10px]">
-                5
+            {hasBadge ? (
+              <Badge className="min-w-6 h-[17px] bg-[#CC0C16] text-white px-2 rounded-[10px] flex items-center justify-center">
+                {badgeCount > 99 ? "99+" : badgeCount}
               </Badge>
             ) : (
               <ChevronDown

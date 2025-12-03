@@ -42,31 +42,27 @@ export function RequestList({
     page: 1,
     limit: 20,
   });
-
-  // Map API response → RequestItem (from your sample payload)
   const baseRequests: RequestItem[] = React.useMemo(() => {
     const apiItems = data?.data ?? [];
     return apiItems.map((r: any) => {
-      // Your payload has channel: "hospital" (this is NOT email/whatsapp),
-      // so for UI we just force it to "email" for now so you get a consistent icon
-      const provider: RequestItem["provider"] = "email";
+      const provider: RequestItem["provider"] =
+        (r.channel ?? "").toLowerCase() === "whatsapp"
+          ? "whatsapp"
+          : (r.channel ?? "").toLowerCase() === "chat"
+            ? "chat"
+            : "email"; // fallback
 
-      // Use processed flag as "read" vs "new"
       const status: RequestItem["status"] =
         Number(r.processed) === 1 ? "read" : "new";
 
-      // All from API are currently "pending"; later you can map other values
       const requestStatus: RequestItem["requestStatus"] =
         (r.status?.toLowerCase() as RequestItem["requestStatus"]) || "pending";
 
-      // Name & organization from payload
       const name = `${r.enrolee_first_name ?? ""} ${
         r.enrolee_surname ?? ""
       }`.trim();
 
       const organization = r.provider_name || r.plan_name || r.channel || "—";
-
-      // Timestamp: for now just use encounter_date (or date_created if you later format the unix)
       const timestamp = r.encounter_date || "";
 
       return {
@@ -80,7 +76,6 @@ export function RequestList({
       };
     });
   }, [data]);
-
   const filteredRequests = React.useMemo(() => {
     let filtered = baseRequests;
 

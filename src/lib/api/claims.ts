@@ -1,8 +1,7 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import apiClient from "./client"
-import type { SimpleApiResponse } from "./types"
 
 /* ============================
    Filters & List Types
@@ -120,12 +119,6 @@ export interface ClaimDetailsRequest {
   tracking_number?: string
 }
 
-export type ProcessClaimPayload = {
-  claim_id: number
-  service_id: number
-  status: string
-  note: string
-}
 /* ============================
    List Claims
 ============================ */
@@ -165,7 +158,7 @@ export function useClaims(filters: ClaimFilters = {}) {
       if (payload.status === "empty") {
         return {
           ...payload,
-          status: "success", // ✅ same trick as beneficiaries
+          status: "success",
           data: [],
           pagination: payload.pagination ?? {
             current_page: body.page,
@@ -219,41 +212,6 @@ export function useClaimDetails(params: ClaimDetailsRequest) {
       }
 
       throw new Error(payload.message || "Failed to fetch claim details")
-    },
-  })
-}
-/* ============================
-    Create Plan (existing)
-============================ */
-
-export function useProcessClaim() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (
-      payload: ProcessClaimPayload
-    ): Promise<SimpleApiResponse> => {
-      const response = await apiClient.post<SimpleApiResponse>(
-        "/process-claim-service.php",
-        payload
-      )
-
-      const apiResponse = response.data
-
-      if (!apiResponse || apiResponse.status !== "success") {
-        if (apiResponse?.status === "exist") {
-          // match backend "exist" semantics but with claim wording
-          throw new Error("This claim service has already been processed")
-        }
-        throw new Error(apiResponse?.message || "Failed to process claim")
-      }
-
-      return apiResponse
-    },
-    onSuccess: () => {
-      // Invalidate claims and claim-details caches so UI refreshes
-      queryClient.invalidateQueries({ queryKey: ["claims"] })
-      queryClient.invalidateQueries({ queryKey: ["claim-details"] })
     },
   })
 }

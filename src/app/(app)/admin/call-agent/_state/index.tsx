@@ -1,121 +1,277 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { createBackend, type CallBackend } from "../_components/CallBackend"
+import * as React from "react";
 
-export type CallState = {
-  callId: string | null
-  status: "idle" | "ringing" | "active" | "transferring" | "ended"
-  seconds: number
-  transcript: Array<{
-    id: string
-    at: number
-    who: "ai" | "caller"
-    text: string
-  }>
-}
+export type CallStatus =
+  | "idle"
+  | "ringing"
+  | "active"
+  | "transferring"
+  | "ended";
 
-type Ctx = {
-  backend: CallBackend
-  state: CallState
-  selectCall: (id: string) => void
-  answer: () => void
-  end: () => void
-  transfer: (agentId: string) => void
-  schedule: (when: Date | string) => void
-}
+export type TranscriptLine = {
+  id: string;
+  who: "ai" | "caller";
+  text: string;
+  at: number;
+};
 
-const CallAgentContext = React.createContext<Ctx | null>(null)
+export type QueueItem = {
+  id: string;
+  hospital: string;
+  by: string;
+  stamp: string;
+  status: "Ongoing" | "Transferred" | "Ended";
+};
 
-export const useCallAgent = () => {
-  const ctx = React.useContext(CallAgentContext)
-  if (!ctx) throw new Error("useCallAgent must be inside <CallAgentProvider>")
-  return ctx
-}
+type State = {
+  callId: string | null;
+  status: CallStatus;
+  seconds: number;
+  transcript: TranscriptLine[];
+  queue: QueueItem[];
+};
 
-export function CallAgentProvider({ children }: { children: React.ReactNode }) {
-  const backend = React.useMemo<CallBackend>(() => createBackend(), [])
-  const [state, setState] = React.useState<CallState>({
-    callId: null,
-    status: "idle",
-    seconds: 0,
-    transcript: [],
-  })
+type Action =
+  | { type: "SET_QUEUE"; payload: QueueItem[] }
+  | { type: "SELECT_CALL"; id: string }
+  | { type: "SET_STATUS"; status: CallStatus }
+  | { type: "TICK" }
+  | { type: "PUSH_LINE"; line: TranscriptLine }
+  | { type: "RESET_CALL" };
 
-  React.useEffect(() => {
-    const onRing = ({ callId }: any) =>
-      setState(() => ({
-        callId,
+const initialState: State = {
+  callId: null,
+  status: "idle",
+  seconds: 0,
+  transcript: [],
+  queue: [],
+};
+
+function callAgentReducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "SET_QUEUE":
+      return { ...state, queue: action.payload };
+    case "SELECT_CALL":
+      return {
+        ...state,
+        callId: action.id,
         status: "ringing",
         seconds: 0,
         transcript: [],
-      }))
+      };
+    case "SET_STATUS":
+      return { ...state, status: action.status };
+    case "TICK":
+      if (state.status !== "active") return state;
+      return { ...state, seconds: state.seconds + 1 };
+    case "PUSH_LINE":
+      return {
+        ...state,
+        transcript: [...state.transcript, action.line],
+      };
+    case "RESET_CALL":
+      return {
+        ...state,
+        callId: null,
+        status: "idle",
+        seconds: 0,
+        transcript: [],
+      };
+    default:
+      return state;
+  }
+}
 
-    const onAnswered = ({ callId }: any) =>
-      setState((s) => ({
-        ...s,
-        callId: s.callId ?? callId ?? s.callId,
-        status: "active",
-      }))
+type CallAgentContextValue = {
+  state: State;
+  selectCall: (id: string) => void;
+  answer: () => void;
+  end: () => void;
+  transfer: (agentId: string) => void;
+  schedule: (whenIso: string) => void;
+};
 
-    const onTransferring = () =>
-      setState((s) => ({ ...s, status: "transferring" }))
-    const onEnded = () => setState((s) => ({ ...s, status: "ended" }))
-    const onTick = ({ seconds }: any) => setState((s) => ({ ...s, seconds }))
-    const onText = (t: any) =>
-      setState((s) => ({ ...s, transcript: [...s.transcript, t] }))
-    const onScheduled = ({ whenISO }: any) => {
-      console.log("[CallAgent] scheduled:", whenISO)
-    }
+const CallAgentContext = React.createContext<CallAgentContextValue | undefined>(
+  undefined,
+);
 
-    backend.on("call:ringing", onRing)
-    backend.on("call:answered", onAnswered)
-    backend.on("call:transferring", onTransferring as any)
-    backend.on("call:ended", onEnded)
-    backend.on("call:timer", onTick)
-    backend.on("call:transcript", onText)
-    backend.on("call:scheduled", onScheduled as any)
+const ACTIVE_CALLS_WS = "wss://powder-va.onrender.com/active-calls";
+
+export function CallAgentProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = React.useReducer(callAgentReducer, initialState);
+
+  // track per-call start time for transcript "at" fallback
+  const callStartRef = React.useRef<number | null>(null);
+
+  /* --------------------- WS: ACTIVE CALLS QUEUE STREAM -------------------- */
+
+  React.useEffect(() => {
+    const ws = new WebSocket(ACTIVE_CALLS_WS);
+
+    ws.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        const callsArray: any[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.calls)
+            ? payload.calls
+            : [];
+
+        const mapped: QueueItem[] = callsArray.map((c, idx) => ({
+          id: String(c.call_control_id ?? c.id ?? idx),
+          hospital: c.hospital ?? c.caller_name ?? "Hospital",
+          by: c.agent_name ?? "Powder AI",
+          stamp: c.started_at ?? new Date().toLocaleString(),
+          status:
+            (c.status ?? "").toLowerCase() === "active"
+              ? "Ongoing"
+              : (c.status ?? "").toLowerCase() === "transferred"
+                ? "Transferred"
+                : "Ended",
+        }));
+
+        dispatch({ type: "SET_QUEUE", payload: mapped });
+      } catch (err) {
+        console.error("Failed to parse active calls message", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("Active calls WebSocket error", err);
+    };
 
     return () => {
-      backend.off("call:ringing", onRing)
-      backend.off("call:answered", onAnswered)
-      backend.off("call:transferring", onTransferring as any)
-      backend.off("call:ended", onEnded)
-      backend.off("call:timer", onTick)
-      backend.off("call:transcript", onText)
-      backend.off("call:scheduled", onScheduled as any)
-    }
-  }, [backend])
+      ws.close();
+    };
+  }, []);
 
-  const selectCall = (id: string) => {
-    ;(backend as any).ring?.(id)
-  }
-  const answer = () => state.callId && backend.answer(state.callId)
-  const end = () => state.callId && backend.end(state.callId)
-  const transfer = (agentId: string) =>
-    state.callId && backend.transfer(state.callId, agentId)
-  const schedule = (when: Date | string) => {
-    if (!state.callId) {
-      console.warn("[CallAgent] schedule ignored: no callId")
-      return
-    }
-    const whenISO =
-      typeof when === "string" ? when : new Date(when).toISOString()
-    backend.schedule(state.callId, whenISO)
-  }
+  /* -------------------------- WS: SELECTED CALL --------------------------- */
 
-  const value: Ctx = {
-    backend,
-    state,
-    selectCall,
-    answer,
-    end,
-    transfer,
-    schedule,
-  }
+  React.useEffect(() => {
+    if (!state.callId) return;
+
+    const ws = new WebSocket(`wss://powder-va.onrender.com/${state.callId}`);
+
+    ws.onopen = () => {
+      // set the start time for this call connection
+      callStartRef.current = Date.now();
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+
+        // status updates
+        if (payload.type === "status" && payload.status) {
+          const s = (payload.status as string).toLowerCase();
+          if (s === "active" || s === "in_progress") {
+            dispatch({ type: "SET_STATUS", status: "active" });
+          } else if (s === "ringing") {
+            dispatch({ type: "SET_STATUS", status: "ringing" });
+          } else if (s === "transferring") {
+            dispatch({ type: "SET_STATUS", status: "transferring" });
+          } else if (s === "ended" || s === "completed") {
+            dispatch({ type: "SET_STATUS", status: "ended" });
+          }
+        }
+
+        // transcript updates
+        if (payload.type === "transcript" && payload.text) {
+          let atSeconds = 0;
+          if (typeof payload.at === "number") {
+            atSeconds = payload.at;
+          } else if (callStartRef.current != null) {
+            atSeconds = Math.floor((Date.now() - callStartRef.current) / 1000);
+          }
+
+          dispatch({
+            type: "PUSH_LINE",
+            line: {
+              id: payload.id ?? `${Date.now()}-${Math.random()}`,
+              who: payload.from === "ai" ? "ai" : "caller",
+              text: payload.text,
+              at: atSeconds,
+            },
+          });
+        }
+      } catch (err) {
+        console.error("Failed to parse call message", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("Call WebSocket error", err);
+    };
+
+    ws.onclose = () => {
+      // optionally reset start time here
+      callStartRef.current = null;
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [state.callId]);
+
+  /* ----------------------------- TIMER (MM:SS) ---------------------------- */
+
+  React.useEffect(() => {
+    if (state.status !== "active") return;
+
+    const id = window.setInterval(() => {
+      dispatch({ type: "TICK" });
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [state.status]);
+
+  /* ------------------------------ ACTIONS API ----------------------------- */
+
+  const selectCall = React.useCallback((id: string) => {
+    dispatch({ type: "SELECT_CALL", id });
+  }, []);
+
+  const answer = React.useCallback(() => {
+    dispatch({ type: "SET_STATUS", status: "active" });
+  }, []);
+
+  const end = React.useCallback(() => {
+    dispatch({ type: "SET_STATUS", status: "ended" });
+  }, []);
+
+  const transfer = React.useCallback((agentId: string) => {
+    console.log("Transfer to", agentId);
+    dispatch({ type: "SET_STATUS", status: "transferring" });
+  }, []);
+
+  const schedule = React.useCallback((whenIso: string) => {
+    console.log("Schedule call at", whenIso);
+  }, []);
+
+  const value = React.useMemo(
+    () => ({
+      state,
+      selectCall,
+      answer,
+      end,
+      transfer,
+      schedule,
+    }),
+    [state, selectCall, answer, end, transfer, schedule],
+  );
+
   return (
     <CallAgentContext.Provider value={value}>
       {children}
     </CallAgentContext.Provider>
-  )
+  );
+}
+
+export function useCallAgent() {
+  const ctx = React.useContext(CallAgentContext);
+  if (!ctx) {
+    throw new Error("useCallAgent must be used within a CallAgentProvider");
+  }
+  return ctx;
 }
