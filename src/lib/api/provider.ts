@@ -77,6 +77,53 @@ export type CreateProviderPayload = {
   days_to_activate: string
 }
 
+/* ========= Types ========= */
+
+export interface HmoFilters {
+  page?: number
+  limit?: number
+  search?: string
+}
+
+export interface HmoListItem {
+  id: number | string
+  name: string
+  code?: string
+  email?: string
+  phone?: string
+  address?: string
+  status?: string
+  [key: string]: any // allow backend extras
+}
+
+export interface HmoPagination {
+  current_page: number
+  per_page: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
+export interface HmoApiResponse {
+  status: string // "success" | "empty" | "error" | ...
+  data?: HmoListItem[]
+  pagination?: HmoPagination
+  message?: string
+  [key: string]: any
+}
+
+export interface NewProviderPayload {
+  name: string
+  admin_email: string
+  admin_phone: string
+  street: string
+  state_id: number
+  state_name: string
+  lga: string
+  schemes: string[]
+}
+
 /* ------------------ List Providers ------------------ */
 
 export function useProviders(filters: ProviderFilters = {}) {
@@ -168,17 +215,6 @@ export function useCreatePlan() {
 /* ============================
     NEW: POST /new-provider.php (Add Provider)
 ============================ */
-
-export interface NewProviderPayload {
-  name: string
-  admin_email: string
-  admin_phone: string
-  street: string
-  state_id: number
-  state_name: string
-  lga: string
-  schemes: string[]
-}
 
 export function useCreateProvider() {
   const queryClient = useQueryClient()
@@ -283,6 +319,57 @@ export function useDeleteProvider() {
           ],
         })
       }
+    },
+  })
+}
+
+/* ========= Hook ========= */
+
+export function useHmos(filters: HmoFilters = {}) {
+  return useQuery({
+    queryKey: ["hmos", filters],
+    queryFn: async (): Promise<HmoApiResponse> => {
+      const body = {
+        page: filters.page ?? 1,
+        limit: filters.limit ?? 20,
+        search: filters.search ?? "",
+      }
+
+      const res = await apiClient.post<HmoApiResponse>("/fetch-hmo.php", body)
+
+      const payload = res.data
+
+      if (!payload) {
+        throw new Error("Failed to fetch HMOs")
+      }
+
+      const defaultPagination: HmoPagination = {
+        current_page: body.page,
+        per_page: body.limit,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false,
+      }
+
+      if (payload.status === "success") {
+        return {
+          ...payload,
+          data: Array.isArray(payload.data) ? payload.data : [],
+          pagination: payload.pagination ?? defaultPagination,
+        }
+      }
+
+      if (payload.status === "empty") {
+        return {
+          ...payload,
+          status: "success",
+          data: [],
+          pagination: payload.pagination ?? defaultPagination,
+        }
+      }
+
+      throw new Error(payload.message || "Failed to fetch HMOs")
     },
   })
 }

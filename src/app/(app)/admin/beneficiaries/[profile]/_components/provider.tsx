@@ -19,7 +19,10 @@ export function ProviderSection() {
           <p className="text-slate-600 text-sm mb-3">Top Provider</p>
           <div className="space-y-3">
             {providers.map((provider, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div
+                key={`provider-${i + 1}`}
+                className="flex items-center gap-3"
+              >
                 <Avatar className="w-10 h-10 bg-blue-600 flex-shrink-0">
                   <AvatarFallback className="text-white">
                     <Building2 className="w-5 h-5" />

@@ -18,17 +18,22 @@ import { TransferPopover } from "./TransferPopover"
 
 export function CallPanel() {
   const { state, answer, end, transfer, schedule } = useCallAgent()
+
+  // derive current call from queue
+  const currentCall = state.queue.find((c) => c.id === state.callId)
+
   const mm = String(Math.floor(state.seconds / 60)).padStart(2, "0")
   const ss = String(state.seconds % 60).padStart(2, "0")
+  const duration = `${mm}:${ss}`
 
   if (!state.callId) {
     return (
-      <div className="h-full rounded-[24px] border border-[#EAECF0] bg-white p-4 flex justify-center items-center  gap-[24px]">
-        <div className="tw-full text-center text-[#606060] font-medium font-hnd align-middle">
+      <div className="h-full rounded-[24px] border border-[#EAECF0] bg-white p-4 flex justify-center items-center gap-[24px]">
+        <div className="w-full text-center text-[#606060] font-medium font-hnd align-middle">
           <div className="mx-auto w-10 h-10 flex justify-center items-center rounded-[8px] border border-[#E9EAEB] p-2 shadow-[0px_4px_4px_0px_#0000000A]">
-            <Phone className=" h-8 w-8" />
+            <Phone className="h-8 w-8" />
           </div>
-          <p className="max-w-[270px] text-[16px] tracking-normal">
+          <p className="max-w-[270px] mx-auto text-[16px] tracking-normal">
             Select a call in session to view or connect
           </p>
         </div>
@@ -38,6 +43,7 @@ export function CallPanel() {
 
   return (
     <div className="h-[322px] rounded-[16px] border border-[#EAECF0] p-4 flex flex-col justify-between">
+      {/* Status banner */}
       <div className="w-full flex justify-center items-center mb-2 text-[12px]">
         {state.status === "active" && (
           <span className="flex items-center gap-2 text-[#22D188] font-hnd font-medium text-[12px]/[20px] tracking-normal">
@@ -59,21 +65,26 @@ export function CallPanel() {
         )}
       </div>
 
+      {/* Main call avatar / label */}
       <div className="grid place-items-center py-4">
-        <div className="w-full  justify-center items-center flex flex-col gap-2">
-          <div className="flex flex-col gap-6">
+        <div className="w-full flex flex-col items-center gap-2">
+          <div className="flex flex-col gap-6 items-center">
             {state.status === "active" && <LiveCallIcon />}
             {state.status === "transferring" && <TransferredLiveCallIcon />}
             {state.status === "ended" && <CallEndedAltIcon />}
+
             <div className="w-full flex flex-col justify-center items-center gap-1 font-hnd tracking-normal">
-              <div className="text-center text-[16px]/[20px] font-medium text-[#344054] ">
-                Hospital ABC
+              <div className="text-center text-[16px]/[20px] font-medium text-[#344054]">
+                {currentCall?.hospital ?? "Unknown Hospital"}
               </div>
               <div className="text-[14px]/[16px] text-[#B4B4B4]">
+                {/* you can swap this for a real claim id when backend supplies it */}
                 CLM-043-LAG
               </div>
             </div>
           </div>
+
+          {/* Timer + state icon */}
           <div className="gap-[5.56px] py-1 px-2 rounded-[8.34px] flex items-center">
             {state.status === "transferring" ? (
               <CallPausedIcon />
@@ -82,18 +93,19 @@ export function CallPanel() {
             ) : state.status === "ended" ? (
               <CallStoppedIcon />
             ) : null}
+
             <span className="font-hnd font-medium text-[12px]/[13.9px] tracking-normal text-[#101010]">
-              {state.status === "active"
-                ? `${mm}:${ss}`
-                : state.status === "ended"
-                ? "02:56"
+              {state.status === "active" || state.status === "ended"
+                ? duration
                 : null}
             </span>
+
             <span>{state.status === "ended" && <PlayRecordedCallIcon />}</span>
           </div>
         </div>
       </div>
 
+      {/* Actions */}
       <div className="flex flex-wrap items-center justify-center gap-[10px] p-4">
         {state.status === "ringing" && (
           <Button
@@ -103,19 +115,22 @@ export function CallPanel() {
             <PhoneIncoming className="mr-2 h-5 w-5" /> Answer Call
           </Button>
         )}
+
         {state.status === "active" && (
           <Button
             variant="destructive"
-            className="h-10 py-[10px] px-4 rounded-[16px] shadow-[0px_1px_2px_0px_#1018280D] gap-1 text-white text-[14px]/[20px] hover:bg-destructive/90"
+            className="h-10 py-[10px] px-4 bg-[#B42318] rounded-[16px] shadow-[0px_1px_2px_0px_#1018280D] gap-1 text-white text-[14px]/[20px] hover:bg-[#B42318]/90 hover:text-white"
             onClick={end}
           >
             <EndCallIcon /> End call
           </Button>
         )}
+
         <TransferPopover onTransfer={(agentId) => transfer(agentId)} />
+
         <Button
           variant="outline"
-          className="h-10 py-[10px] px-4 rounded-[16px] border-[#D0D5DD] shadow-[0px_1px_2px_0px_#1018280D] gap-1 text-[#344054] text-[14px]/[20px] hover:bg-white/90"
+          className="h-10 py-[10px] px-4 rounded-[16px] border-[#D0D5DD] shadow-[0px_1px_2px_0px_#1018280D] gap-1 text-[#344054] hover:text-[#344054] text-[14px]/[20px] hover:bg-white/90"
           onClick={() => schedule(new Date(Date.now() + 3600e3).toISOString())}
         >
           <ScheduleCallIcon /> Schedule call

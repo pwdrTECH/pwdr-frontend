@@ -1,15 +1,15 @@
 "use client"
 
-import * as React from "react"
+import { TransferredIcon } from "@/components/svgs"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Users, Search } from "lucide-react"
-import { TransferredIcon } from "@/components/svgs"
+import { Search } from "lucide-react"
+import * as React from "react"
 import { AvatarWithStatus } from "./Avatar"
 
 const AGENTS = [
@@ -55,7 +55,7 @@ export function TransferPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-10 py-[10px] px-4 rounded-[16px] border-[#D0D5DD] shadow-[0px_1px_2px_0px_#1018280D] gap-1 text-[#344054] text-[14px]/[20px] hover:bg-white/90"
+          className="h-10 py-[10px] px-4 rounded-[16px] border-[#D0D5DD] shadow-[0px_1px_2px_0px_#1018280D] gap-1 text-[#344054] hover:text-[#344054] text-[14px]/[20px] hover:bg-white/90"
         >
           <TransferredIcon /> Transfer call
         </Button>
@@ -80,6 +80,7 @@ export function TransferPopover({
         <div className="w-[268px] max-h-[260px] flex flex-col gap-2 overflow-y-auto">
           {items.map((a) => (
             <button
+              type="button"
               key={a.id}
               onClick={() => {
                 onTransfer(a.id)

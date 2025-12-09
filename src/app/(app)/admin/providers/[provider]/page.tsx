@@ -76,7 +76,7 @@ const mockServices = [
     status: "Approved" as const,
   },
 ];
-export default function ProviderPage() {
+export default function ProviderDetail() {
   const params = useParams<{ provider: string }>();
   const providerSlug = params?.provider ?? "";
   const providerName = React.useMemo(

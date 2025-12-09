@@ -1,36 +1,36 @@
-"use client";
+"use client"
 
-import * as React from "react";
+import * as React from "react"
 
 export type CallStatus =
   | "idle"
   | "ringing"
   | "active"
   | "transferring"
-  | "ended";
+  | "ended"
 
 export type TranscriptLine = {
-  id: string;
-  who: "ai" | "caller";
-  text: string;
-  at: number;
-};
+  id: string
+  who: "ai" | "caller"
+  text: string
+  at: number
+}
 
 export type QueueItem = {
-  id: string;
-  hospital: string;
-  by: string;
-  stamp: string;
-  status: "Ongoing" | "Transferred" | "Ended";
-};
+  id: string
+  hospital: string
+  by: string
+  stamp: string
+  status: "Ongoing" | "Transferred" | "Ended"
+}
 
 type State = {
-  callId: string | null;
-  status: CallStatus;
-  seconds: number;
-  transcript: TranscriptLine[];
-  queue: QueueItem[];
-};
+  callId: string | null
+  status: CallStatus
+  seconds: number
+  transcript: TranscriptLine[]
+  queue: QueueItem[]
+}
 
 type Action =
   | { type: "SET_QUEUE"; payload: QueueItem[] }
@@ -38,7 +38,7 @@ type Action =
   | { type: "SET_STATUS"; status: CallStatus }
   | { type: "TICK" }
   | { type: "PUSH_LINE"; line: TranscriptLine }
-  | { type: "RESET_CALL" };
+  | { type: "RESET_CALL" }
 
 const initialState: State = {
   callId: null,
@@ -46,30 +46,49 @@ const initialState: State = {
   seconds: 0,
   transcript: [],
   queue: [],
-};
+}
+
+// -----------------------------------------------------------------------------
+// Config
+// -----------------------------------------------------------------------------
+
+const WS_BASE =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_CALL_WS_BASE) ||
+  "wss://powder-va.onrender.com"
+
+const ACTIVE_CALLS_WS = `${WS_BASE}/active-calls`
+
+// -----------------------------------------------------------------------------
+// Reducer
+// -----------------------------------------------------------------------------
 
 function callAgentReducer(state: State, action: Action): State {
   switch (action.type) {
     case "SET_QUEUE":
-      return { ...state, queue: action.payload };
+      return { ...state, queue: action.payload }
+
     case "SELECT_CALL":
       return {
         ...state,
         callId: action.id,
-        status: "ringing",
+        // don't force status here; let actions / WS control it
         seconds: 0,
         transcript: [],
-      };
+      }
+
     case "SET_STATUS":
-      return { ...state, status: action.status };
+      return { ...state, status: action.status }
+
     case "TICK":
-      if (state.status !== "active") return state;
-      return { ...state, seconds: state.seconds + 1 };
+      if (state.status !== "active") return state
+      return { ...state, seconds: state.seconds + 1 }
+
     case "PUSH_LINE":
       return {
         ...state,
         transcript: [...state.transcript, action.line],
-      };
+      }
+
     case "RESET_CALL":
       return {
         ...state,
@@ -77,112 +96,191 @@ function callAgentReducer(state: State, action: Action): State {
         status: "idle",
         seconds: 0,
         transcript: [],
-      };
+      }
+
     default:
-      return state;
+      return state
   }
 }
 
+// -----------------------------------------------------------------------------
+// Context
+// -----------------------------------------------------------------------------
+
 type CallAgentContextValue = {
-  state: State;
-  selectCall: (id: string) => void;
-  answer: () => void;
-  end: () => void;
-  transfer: (agentId: string) => void;
-  schedule: (whenIso: string) => void;
-};
+  state: State
+  selectCall: (id: string) => void
+  answer: () => void
+  end: () => void
+  transfer: (agentId: string) => void
+  schedule: (whenIso: string) => void
+}
 
 const CallAgentContext = React.createContext<CallAgentContextValue | undefined>(
-  undefined,
-);
+  undefined
+)
 
-const ACTIVE_CALLS_WS = "wss://powder-va.onrender.com/active-calls";
+// -----------------------------------------------------------------------------
+// Provider
+// -----------------------------------------------------------------------------
 
 export function CallAgentProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = React.useReducer(callAgentReducer, initialState);
+  const [state, dispatch] = React.useReducer(callAgentReducer, initialState)
 
-  // track per-call start time for transcript "at" fallback
-  const callStartRef = React.useRef<number | null>(null);
+  // used to compute "at" timestamps for transcript lines
+  const callStartRef = React.useRef<number | null>(null)
 
-  /* --------------------- WS: ACTIVE CALLS QUEUE STREAM -------------------- */
+  // ---------------------------------------------------------------------------
+  // ACTIVE CALLS QUEUE SOCKET
+  // ---------------------------------------------------------------------------
 
   React.useEffect(() => {
-    const ws = new WebSocket(ACTIVE_CALLS_WS);
+    let ws: WebSocket | null = null
+    let stopped = false
+    const retryDelay = 2000
 
-    ws.onmessage = (event) => {
+    const connect = () => {
+      if (stopped) return
+
       try {
-        const payload = JSON.parse(event.data);
-        const callsArray: any[] = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload.calls)
-            ? payload.calls
-            : [];
-
-        const mapped: QueueItem[] = callsArray.map((c, idx) => ({
-          id: String(c.call_control_id ?? c.id ?? idx),
-          hospital: c.hospital ?? c.caller_name ?? "Hospital",
-          by: c.agent_name ?? "Powder AI",
-          stamp: c.started_at ?? new Date().toLocaleString(),
-          status:
-            (c.status ?? "").toLowerCase() === "active"
-              ? "Ongoing"
-              : (c.status ?? "").toLowerCase() === "transferred"
-                ? "Transferred"
-                : "Ended",
-        }));
-
-        dispatch({ type: "SET_QUEUE", payload: mapped });
-      } catch (err) {
-        console.error("Failed to parse active calls message", err);
+        ws = new WebSocket(ACTIVE_CALLS_WS)
+      } catch (e) {
+        console.error("[CallAgent] Failed to create ACTIVE_CALLS WebSocket", e)
+        setTimeout(connect, retryDelay)
+        return
       }
-    };
 
-    ws.onerror = (err) => {
-      console.error("Active calls WebSocket error", err);
-    };
+      ws.onopen = () => {
+        console.info("[CallAgent] ACTIVE_CALLS_WS connected")
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data)
+          let callsArray: any[] = []
+
+          if (
+            payload?.event === "active_calls" &&
+            Array.isArray(payload.data)
+          ) {
+            callsArray = payload.data
+          } else if (Array.isArray(payload)) {
+            callsArray = payload
+          } else if (Array.isArray(payload.calls)) {
+            callsArray = payload.calls
+          } else {
+            console.warn(
+              "[CallAgent] Unknown active-calls payload shape:",
+              payload
+            )
+          }
+
+          const mapped: QueueItem[] = callsArray.map((c, idx) => ({
+            id: String(c.call_control_id ?? c.id ?? idx),
+
+            // For now show phone_number as "hospital" label in the UI
+            hospital: c.phone_number ?? "Unknown caller",
+
+            by: "Powder AI",
+
+            // If backend later sends a timestamp (e.g. c.created_at),
+            // we can use that. For now we use "now" so it's not empty.
+            stamp: c.created_at ?? new Date().toLocaleString(),
+
+            // This event is literally "active_calls", so treat as ongoing.
+            status: "Ongoing",
+          }))
+
+          console.info("[CallAgent] active queue size:", mapped.length)
+          dispatch({ type: "SET_QUEUE", payload: mapped })
+        } catch (err) {
+          console.error(
+            "[CallAgent] Failed to parse active calls message",
+            err,
+            event.data
+          )
+        }
+      }
+
+      ws.onerror = (err) => {
+        console.error("[CallAgent] Active calls WebSocket error", err)
+      }
+
+      ws.onclose = (ev) => {
+        console.warn(
+          "[CallAgent] ACTIVE_CALLS_WS closed",
+          ev.code,
+          ev.reason || "(no reason)"
+        )
+        if (!stopped && ev.code !== 1000) {
+          setTimeout(connect, retryDelay)
+        }
+      }
+    }
+
+    connect()
 
     return () => {
-      ws.close();
-    };
-  }, []);
+      stopped = true
+      if (
+        ws &&
+        (ws.readyState === WebSocket.OPEN ||
+          ws.readyState === WebSocket.CONNECTING)
+      ) {
+        ws.close(1000, "component unmount")
+      }
+    }
+  }, [])
 
-  /* -------------------------- WS: SELECTED CALL --------------------------- */
+  // ---------------------------------------------------------------------------
+  // PER-CALL TRANSCRIPT SOCKET
+  // ---------------------------------------------------------------------------
 
   React.useEffect(() => {
-    if (!state.callId) return;
+    if (!state.callId) return
 
-    const ws = new WebSocket(`wss://powder-va.onrender.com/${state.callId}`);
+    let ws: WebSocket | null = null
+
+    try {
+      ws = new WebSocket(`${WS_BASE}/transcripts/${state.callId}`)
+    } catch (e) {
+      console.error("[CallAgent] Failed to create CALL WebSocket", e)
+      return
+    }
 
     ws.onopen = () => {
-      // set the start time for this call connection
-      callStartRef.current = Date.now();
-    };
+      callStartRef.current = Date.now()
+      console.info("[CallAgent] Call WS connected for", state.callId)
+    }
 
     ws.onmessage = (event) => {
       try {
-        const payload = JSON.parse(event.data);
+        // Uncomment this if you want to inspect raw messages:
+        // console.log("[CallAgent] RAW transcript message:", event.data)
+
+        const payload = JSON.parse(event.data)
 
         // status updates
         if (payload.type === "status" && payload.status) {
-          const s = (payload.status as string).toLowerCase();
+          const s = (payload.status as string).toLowerCase()
           if (s === "active" || s === "in_progress") {
-            dispatch({ type: "SET_STATUS", status: "active" });
+            dispatch({ type: "SET_STATUS", status: "active" })
           } else if (s === "ringing") {
-            dispatch({ type: "SET_STATUS", status: "ringing" });
+            dispatch({ type: "SET_STATUS", status: "ringing" })
           } else if (s === "transferring") {
-            dispatch({ type: "SET_STATUS", status: "transferring" });
+            dispatch({ type: "SET_STATUS", status: "transferring" })
           } else if (s === "ended" || s === "completed") {
-            dispatch({ type: "SET_STATUS", status: "ended" });
+            dispatch({ type: "SET_STATUS", status: "ended" })
           }
         }
 
         // transcript updates
         if (payload.type === "transcript" && payload.text) {
-          let atSeconds = 0;
+          let atSeconds = 0
           if (typeof payload.at === "number") {
-            atSeconds = payload.at;
+            atSeconds = payload.at
           } else if (callStartRef.current != null) {
-            atSeconds = Math.floor((Date.now() - callStartRef.current) / 1000);
+            atSeconds = Math.floor((Date.now() - callStartRef.current) / 1000)
           }
 
           dispatch({
@@ -193,61 +291,83 @@ export function CallAgentProvider({ children }: { children: React.ReactNode }) {
               text: payload.text,
               at: atSeconds,
             },
-          });
+          })
         }
       } catch (err) {
-        console.error("Failed to parse call message", err);
+        console.error(
+          "[CallAgent] Failed to parse call message",
+          err,
+          event.data
+        )
       }
-    };
+    }
 
     ws.onerror = (err) => {
-      console.error("Call WebSocket error", err);
-    };
+      console.error("[CallAgent] Call WebSocket error", err)
+    }
 
-    ws.onclose = () => {
-      // optionally reset start time here
-      callStartRef.current = null;
-    };
+    ws.onclose = (ev) => {
+      console.warn(
+        "[CallAgent] Call WS closed",
+        ev.code,
+        ev.reason || "(no reason)"
+      )
+      callStartRef.current = null
+    }
 
     return () => {
-      ws.close();
-    };
-  }, [state.callId]);
+      if (
+        ws &&
+        (ws.readyState === WebSocket.OPEN ||
+          ws.readyState === WebSocket.CONNECTING)
+      ) {
+        ws.close(1000, "component unmount")
+      }
+    }
+  }, [state.callId])
 
-  /* ----------------------------- TIMER (MM:SS) ---------------------------- */
+  // ---------------------------------------------------------------------------
+  // TIMER (MM:SS) – increments when status === "active"
+  // ---------------------------------------------------------------------------
 
   React.useEffect(() => {
-    if (state.status !== "active") return;
+    if (state.status !== "active") return
 
     const id = window.setInterval(() => {
-      dispatch({ type: "TICK" });
-    }, 1000);
+      dispatch({ type: "TICK" })
+    }, 1000)
 
-    return () => window.clearInterval(id);
-  }, [state.status]);
+    return () => window.clearInterval(id)
+  }, [state.status])
 
-  /* ------------------------------ ACTIONS API ----------------------------- */
+  // ---------------------------------------------------------------------------
+  // Actions API
+  // ---------------------------------------------------------------------------
 
   const selectCall = React.useCallback((id: string) => {
-    dispatch({ type: "SELECT_CALL", id });
-  }, []);
+    // set current call + reset timer/transcript
+    dispatch({ type: "SELECT_CALL", id })
+    // treat it as active immediately for UI (since /active-calls are ongoing)
+    dispatch({ type: "SET_STATUS", status: "active" })
+  }, [])
 
   const answer = React.useCallback(() => {
-    dispatch({ type: "SET_STATUS", status: "active" });
-  }, []);
+    // if you ever have a true "ringing" state, this will move it to active
+    dispatch({ type: "SET_STATUS", status: "active" })
+  }, [])
 
   const end = React.useCallback(() => {
-    dispatch({ type: "SET_STATUS", status: "ended" });
-  }, []);
+    dispatch({ type: "SET_STATUS", status: "ended" })
+  }, [])
 
   const transfer = React.useCallback((agentId: string) => {
-    console.log("Transfer to", agentId);
-    dispatch({ type: "SET_STATUS", status: "transferring" });
-  }, []);
+    console.log("Transfer to", agentId)
+    dispatch({ type: "SET_STATUS", status: "transferring" })
+  }, [])
 
   const schedule = React.useCallback((whenIso: string) => {
-    console.log("Schedule call at", whenIso);
-  }, []);
+    console.log("Schedule call at", whenIso)
+  }, [])
 
   const value = React.useMemo(
     () => ({
@@ -258,20 +378,24 @@ export function CallAgentProvider({ children }: { children: React.ReactNode }) {
       transfer,
       schedule,
     }),
-    [state, selectCall, answer, end, transfer, schedule],
-  );
+    [state, selectCall, answer, end, transfer, schedule]
+  )
 
   return (
     <CallAgentContext.Provider value={value}>
       {children}
     </CallAgentContext.Provider>
-  );
+  )
 }
 
+// -----------------------------------------------------------------------------
+// Hook
+// -----------------------------------------------------------------------------
+
 export function useCallAgent() {
-  const ctx = React.useContext(CallAgentContext);
+  const ctx = React.useContext(CallAgentContext)
   if (!ctx) {
-    throw new Error("useCallAgent must be used within a CallAgentProvider");
+    throw new Error("useCallAgent must be used within a CallAgentProvider")
   }
-  return ctx;
+  return ctx
 }

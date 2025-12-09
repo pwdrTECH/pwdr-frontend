@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import type { BillingRow } from "../page";
 import { SignatureIcon } from "@/components/svgs";
+import Image from "next/image";
 
 const formatNaira = (v: number) =>
   `₦${v.toLocaleString("en-NG", {
@@ -158,9 +159,7 @@ export function BillDetailSheet({
       <div className="flex items-start justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E5F4FF]">
-            <span className="font-hnd text-lg font-bold text-[#2563EB]">
-              TCH
-            </span>
+            <Image src="/" alt="HMO service logo" width={64} height={64} />
           </div>
           <div className="flex flex-col gap-1 text-sm">
             <span className="font-semibold text-[#111827]">

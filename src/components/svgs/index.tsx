@@ -1,6 +1,6 @@
 export type IconProps = {
-  className?: string;
-};
+  className?: string
+}
 export default function MailIcon({ className }: IconProps) {
   return (
     <svg
@@ -21,7 +21,7 @@ export default function MailIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function EditAltIcon({ className }: IconProps) {
   return (
@@ -59,7 +59,7 @@ export function EditAltIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function PadlockIcon({ className }: IconProps) {
   return (
@@ -102,7 +102,7 @@ export function PadlockIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CircledUpArrow({ className }: IconProps) {
   return (
@@ -138,7 +138,7 @@ export function CircledUpArrow({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function NairaIcon() {
   return (
@@ -159,7 +159,7 @@ export function NairaIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function DashboardIcon({ className }: IconProps) {
   return (
@@ -202,7 +202,7 @@ export function DashboardIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function MessageTextIcon({ className }: IconProps) {
@@ -240,7 +240,7 @@ export function MessageTextIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function RequestStatus({ className }: IconProps) {
   return (
@@ -283,7 +283,7 @@ export function RequestStatus({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function ChanneledRequestsIcon({ className }: IconProps) {
   return (
@@ -312,7 +312,7 @@ export function ChanneledRequestsIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function ClaimIcon({ className }: IconProps) {
   return (
@@ -395,7 +395,7 @@ export function ClaimIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function ReportsIcon({ className }: IconProps) {
   return (
@@ -431,7 +431,7 @@ export function ReportsIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function BillingIcon({ className }: IconProps) {
@@ -472,7 +472,7 @@ export function BillingIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function HospitalIcon({ className }: IconProps) {
@@ -528,7 +528,7 @@ export function HospitalIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function PeopleIcon({ className }: IconProps) {
   return (
@@ -585,7 +585,7 @@ export function PeopleIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function AgentIcon({ className }: IconProps) {
   return (
@@ -614,7 +614,7 @@ export function AgentIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function SettingsIcon({ className }: IconProps) {
   return (
@@ -643,7 +643,7 @@ export function SettingsIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function NotificationIcon() {
   return (
@@ -665,7 +665,7 @@ export function NotificationIcon() {
       />
       <circle cx="20" cy="3" r="2" fill="#027FA3" />
     </svg>
-  );
+  )
 }
 export function CircledProfileIcon() {
   return (
@@ -694,7 +694,7 @@ export function CircledProfileIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function FirstAidBox({ className }: IconProps) {
@@ -716,7 +716,7 @@ export function FirstAidBox({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function HealthRecords({ className }: IconProps) {
@@ -738,7 +738,7 @@ export function HealthRecords({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function TimeIcon({ className }: IconProps) {
@@ -761,7 +761,7 @@ export function TimeIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function FilledApprovedIcon({ className }: IconProps) {
   return (
@@ -802,7 +802,7 @@ export function FilledApprovedIcon({ className }: IconProps) {
         <path d="M0 0H16V16H0V0Z" fill="#27CA40" />
       </g>
     </svg>
-  );
+  )
 }
 export function FilledAltApprovedIcon({ className }: IconProps) {
   return (
@@ -815,7 +815,7 @@ export function FilledAltApprovedIcon({ className }: IconProps) {
       className={className}
     >
       <title>Filled alternative approved Icon</title>
-      <g clip-path="url(#clip0_4882_69501)">
+      <g clipPath="url(#clip0_4882_69501)">
         <mask
           id="mask0_4882_69501"
           style={{ maskType: "luminance" }}
@@ -829,15 +829,15 @@ export function FilledAltApprovedIcon({ className }: IconProps) {
             d="M8.00261 14.6693C8.87825 14.6704 9.74547 14.4984 10.5544 14.1633C11.3634 13.8282 12.0982 13.3366 12.7166 12.7166C13.3366 12.0982 13.8282 11.3634 14.1633 10.5544C14.4984 9.74547 14.6704 8.87825 14.6693 8.00261C14.6704 7.12697 14.4984 6.25975 14.1633 5.45077C13.8282 4.64179 13.3366 3.907 12.7166 3.28861C12.0982 2.66866 11.3634 2.17702 10.5544 1.84191C9.74547 1.50681 8.87825 1.33486 8.00261 1.33594C7.12697 1.33486 6.25975 1.50681 5.45077 1.84191C4.64179 2.17702 3.907 2.66866 3.28861 3.28861C2.66866 3.907 2.17702 4.64179 1.84191 5.45077C1.50681 6.25975 1.33486 7.12697 1.33594 8.00261C1.33486 8.87825 1.50681 9.74547 1.84191 10.5544C2.17702 11.3634 2.66866 12.0982 3.28861 12.7166C3.907 13.3366 4.64179 13.8282 5.45077 14.1633C6.25975 14.4984 7.12697 14.6704 8.00261 14.6693Z"
             fill="white"
             stroke="white"
-            stroke-width="1.33333"
-            stroke-linejoin="round"
+            strokeWidth="1.33333"
+            strokeLinejoin="round"
           />
           <path
             d="M5.33594 8L7.33594 10L11.3359 6"
             stroke="black"
-            stroke-width="1.33333"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="1.33333"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </mask>
         <g mask="url(#mask0_4882_69501)">
@@ -850,7 +850,7 @@ export function FilledAltApprovedIcon({ className }: IconProps) {
         </clipPath>
       </defs>
     </svg>
-  );
+  )
 }
 export function CircledApprovedIcon({ className }: IconProps) {
   return (
@@ -872,7 +872,7 @@ export function CircledApprovedIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function CircledCancelIcon({ className }: IconProps) {
@@ -895,7 +895,7 @@ export function CircledCancelIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function WarningIcon({ className }: IconProps) {
@@ -918,7 +918,7 @@ export function WarningIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function WarningAlt() {
   return (
@@ -945,7 +945,7 @@ export function WarningAlt() {
         fill="#FF6058"
       />
     </svg>
-  );
+  )
 }
 export function BlueDot() {
   return (
@@ -968,7 +968,7 @@ export function BlueDot() {
         strokeWidth="4"
       />
     </svg>
-  );
+  )
 }
 export function AngleRight({ className }: IconProps) {
   return (
@@ -991,7 +991,7 @@ export function AngleRight({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function ArrowUp({ className }: IconProps) {
   return (
@@ -1029,7 +1029,7 @@ export function ArrowUp({ className }: IconProps) {
         />
       </g>
     </svg>
-  );
+  )
 }
 
 export function ArrowRight({ className }: IconProps) {
@@ -1052,7 +1052,7 @@ export function ArrowRight({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function ArrowLeft({ className }: IconProps) {
@@ -1075,7 +1075,7 @@ export function ArrowLeft({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function WhatsAppIcon({ className }: IconProps) {
@@ -1095,7 +1095,7 @@ export function WhatsAppIcon({ className }: IconProps) {
         fill="#25D366"
       />
     </svg>
-  );
+  )
 }
 
 export function GmailIcon({ className }: IconProps) {
@@ -1131,7 +1131,7 @@ export function GmailIcon({ className }: IconProps) {
         fill="#C5221F"
       />
     </svg>
-  );
+  )
 }
 export function SMSIcon({ className }: IconProps) {
   return (
@@ -1175,7 +1175,7 @@ export function SMSIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function OngoingCallIcon() {
   return (
@@ -1206,7 +1206,7 @@ export function OngoingCallIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function PhoneIcon() {
   return (
@@ -1227,7 +1227,7 @@ export function PhoneIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function LocationIcon({ className }: IconProps) {
   return (
@@ -1251,7 +1251,7 @@ export function LocationIcon({ className }: IconProps) {
         strokeWidth="1.5"
       />
     </svg>
-  );
+  )
 }
 export function EmailIcon() {
   return (
@@ -1281,7 +1281,7 @@ export function EmailIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CopyIcon({ className }: IconProps) {
   return (
@@ -1312,7 +1312,7 @@ export function CopyIcon({ className }: IconProps) {
         />
       </g>
     </svg>
-  );
+  )
 }
 export function IdCardIcon() {
   return (
@@ -1332,7 +1332,7 @@ export function IdCardIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CircledApprovedIconAlt() {
   return (
@@ -1353,7 +1353,7 @@ export function CircledApprovedIconAlt() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function RejectIcon() {
   return (
@@ -1373,7 +1373,7 @@ export function RejectIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function RecyledIcon() {
   return (
@@ -1393,7 +1393,7 @@ export function RecyledIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function EndCallIcon() {
   return (
@@ -1427,7 +1427,7 @@ export function EndCallIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function TransferredLiveCallIcon() {
   return (
@@ -1451,7 +1451,7 @@ export function TransferredLiveCallIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function TransferredAltIcon() {
@@ -1476,7 +1476,7 @@ export function TransferredAltIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function TransferredIcon() {
@@ -1498,7 +1498,7 @@ export function TransferredIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function ScheduleCallIcon() {
@@ -1520,7 +1520,7 @@ export function ScheduleCallIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CautionIcon({ className }: IconProps) {
   return (
@@ -1556,7 +1556,7 @@ export function CautionIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function UploadFile({ className }: IconProps) {
   return (
@@ -1598,7 +1598,7 @@ export function UploadFile({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CalendarIcon() {
   return (
@@ -1686,7 +1686,7 @@ export function CalendarIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function FilterIcon({ className }: IconProps) {
   return (
@@ -1722,7 +1722,7 @@ export function FilterIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function HomeIcon({ className }: IconProps) {
   return (
@@ -1750,7 +1750,7 @@ export function HomeIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function DeleteIcon({ className }: IconProps) {
   return (
@@ -1799,7 +1799,7 @@ export function DeleteIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function EditIcon({ className }: IconProps) {
   return (
@@ -1837,7 +1837,7 @@ export function EditIcon({ className }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CallEndedAltIcon() {
   return (
@@ -1956,7 +1956,7 @@ export function CallEndedAltIcon() {
         </clipPath>
       </defs>
     </svg>
-  );
+  )
 }
 export function CallStoppedIcon() {
   return (
@@ -1976,7 +1976,7 @@ export function CallStoppedIcon() {
         fill="#5F6368"
       />
     </svg>
-  );
+  )
 }
 export function PlayRecordedCallIcon() {
   return (
@@ -1989,7 +1989,7 @@ export function PlayRecordedCallIcon() {
     >
       <title>Play record Icon</title>
 
-      <rect width="26" height="26" rx="8" fill="#DADADA" fill-opacity="0.45" />
+      <rect width="26" height="26" rx="8" fill="#DADADA" fillOpacity="0.45" />
       <path
         d="M7 13.0015V10.3315C7 7.01651 9.3475 5.65901 12.22 7.31651L14.5375 8.65151L16.855 9.98651C19.7275 11.644 19.7275 14.359 16.855 16.0165L14.5375 17.3515L12.22 18.6865C9.3475 20.344 7 18.9865 7 15.6715V13.0015Z"
         stroke="#292D32"
@@ -1999,7 +1999,7 @@ export function PlayRecordedCallIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function CallRecordIcon() {
   return (
@@ -2017,7 +2017,7 @@ export function CallRecordIcon() {
         fill="#FF473D"
       />
     </svg>
-  );
+  )
 }
 
 export function CallPausedIcon() {
@@ -2040,7 +2040,7 @@ export function CallPausedIcon() {
         fill="#B54708"
       />
     </svg>
-  );
+  )
 }
 export function HalfLogoIcon() {
   return (
@@ -2058,7 +2058,7 @@ export function HalfLogoIcon() {
         fill="#1671D9"
       />
     </svg>
-  );
+  )
 }
 
 export function LiveCallIcon({ className }: IconProps) {
@@ -2226,7 +2226,7 @@ export function LiveCallIcon({ className }: IconProps) {
         </clipPath>
       </defs>
     </svg>
-  );
+  )
 }
 export function VerifiedFilledIcon({ className }: IconProps) {
   return (
@@ -2268,7 +2268,7 @@ export function VerifiedFilledIcon({ className }: IconProps) {
         <path d="M0 0H16V16H0V0Z" fill="#27CA40" />
       </g>
     </svg>
-  );
+  )
 }
 export function MarkedIcon({ className }: IconProps) {
   return (
@@ -2288,7 +2288,7 @@ export function MarkedIcon({ className }: IconProps) {
         fill="currentcolor"
       />
     </svg>
-  );
+  )
 }
 export function VerifiedOutlinedIcon({ className }: IconProps) {
   return (
@@ -2320,7 +2320,7 @@ export function VerifiedOutlinedIcon({ className }: IconProps) {
         </clipPath>
       </defs>
     </svg>
-  );
+  )
 }
 export function SignatureIcon() {
   return (
@@ -2340,7 +2340,7 @@ export function SignatureIcon() {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }
 export function MagicPenAltIcon() {
   return (
@@ -2385,7 +2385,7 @@ export function MagicPenAltIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 export function MagicPenIcon({ className }: IconProps) {
   return (
@@ -2477,7 +2477,7 @@ export function MagicPenIcon({ className }: IconProps) {
         </linearGradient>
       </defs>
     </svg>
-  );
+  )
 }
 export function EndCallMotionIcon() {
   return (
@@ -2596,7 +2596,7 @@ export function EndCallMotionIcon() {
         </clipPath>
       </defs>
     </svg>
-  );
+  )
 }
 
 export function ExcelFileIcon() {
@@ -2644,5 +2644,5 @@ export function ExcelFileIcon() {
         fill="#1671D9"
       />
     </svg>
-  );
+  )
 }

@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
 import {
   MagicPenIcon,
   VerifiedFilledIcon,
   VerifiedOutlinedIcon,
-} from "@/components/svgs";
-import Image from "next/image";
-import { useCallAgent } from "../_state";
-import { useAiTranscripts } from "@/lib/api/callAgent";
+} from "@/components/svgs"
+import Image from "next/image"
+import { useCallAgent } from "../_state"
+import { useAiTranscripts } from "@/lib/api/callAgent"
 
 export function AISummary() {
-  const { state } = useCallAgent();
-  const done = state.status === "ended";
+  const { state } = useCallAgent()
+  const done = state.status === "ended"
 
   // In a real setup, you might pass phone_number or scenario from the call state.
   // For now we just ask for the latest completed "claims" transcript.
@@ -24,14 +24,14 @@ export function AISummary() {
       // phone_number: state.currentCallerPhone ?? undefined,
       // client_state: state.currentCallerState ?? undefined,
     },
-    { enabled: done }, // only fetch once call is ended
-  );
+    { enabled: done } // only fetch once call is ended
+  )
 
-  const latest = data?.data?.[0];
+  const latest = data?.data?.[0]
 
   const summaryText =
     latest?.summary ??
-    "Your claim has been successfully verified. The reported visit and symptoms align with your medical history and are covered under your plan.";
+    "Your claim has been successfully verified. The reported visit and symptoms align with your medical history and are covered under your plan."
 
   return (
     <div className="w-full sm-[324px] flex flex-col gap-6 rounded-3xl border border-[#EAECF0] pb-4">
@@ -107,7 +107,7 @@ export function AISummary() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function Verify({ text, error }: { text: string; error?: boolean }) {
@@ -122,5 +122,5 @@ function Verify({ text, error }: { text: string; error?: boolean }) {
       />{" "}
       {text}
     </div>
-  );
+  )
 }
