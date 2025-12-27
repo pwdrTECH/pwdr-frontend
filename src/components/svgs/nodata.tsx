@@ -8,6 +8,7 @@ export default function EmptyFileIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
+      <title>No data</title>
       <rect
         width="102.172"
         height="102.172"

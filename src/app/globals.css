@@ -6,7 +6,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-hnd: var(--font-hnd);
+
+  --font-hnd: var(--font-helvetica-now-display);
+  --font-inter: var(--font-inter);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-helvetica-now-display);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -162,4 +167,105 @@ textarea {
 .custom-scroll {
   scrollbar-color: #d1d5db #f3f4f6;
   scrollbar-width: thin;
+}
+/* ===== Claims Tooltip (per Figma spec) ===== */
+.claims-tooltip {
+  width: 276px;
+  height: 96.391754px;
+  padding: 4.7px 6.26px;
+  gap: 12px;
+
+  border-top-left-radius: 6.26px;
+  border-top-right-radius: 6.26px;
+  border-bottom-right-radius: 6.26px;
+
+  background: #212123;
+}
+
+.claims-tooltip__month {
+  font-family: "Helvetica Now Display", system-ui, -apple-system, Segoe UI,
+    sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  text-align: center;
+  color: #afafaf;
+}
+
+.claims-tooltip__statusRow {
+  width: 123px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.claims-tooltip__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  display: inline-block;
+}
+
+.claims-tooltip__statusText,
+.claims-tooltip__labelText {
+  font-family: "Helvetica Now Display", system-ui, -apple-system, Segoe UI,
+    sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  text-align: center;
+  color: #fcfcfc;
+}
+
+/* The "Claim" text can be slightly dimmer if you want it to match your look */
+.claims-tooltip__labelText {
+  color: #fcfcfc;
+}
+
+.claims-tooltip__stats {
+  width: 123px;
+  height: 49px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.claims-tooltip__count {
+  font-family: "Helvetica Now Display", system-ui, -apple-system, Segoe UI,
+    sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 100%;
+  text-align: center;
+  color: #fcfcfc;
+}
+
+.claims-tooltip__amount {
+  font-family: "Helvetica Now Display", system-ui, -apple-system, Segoe UI,
+    sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  text-align: center;
+  color: #929292;
+}
+
+/* ===== Graph line strokes (per spec) ===== */
+.stroke-approved {
+  stroke: #02a32d;
+  stroke-width: 2px;
+}
+
+.stroke-pending {
+  stroke: #f4bf13;
+  stroke-width: 2px;
+}
+
+.stroke-rejected {
+  stroke: #f85e5e;
+  stroke-width: 2px;
 }

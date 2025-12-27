@@ -13,7 +13,7 @@ function formatCompact(n: number) {
   return `${n}`
 }
 
-export function ClaimsTooltip(props: TooltipProps<ValueType, NameType>) {
+export function CustomTooltip(props: TooltipProps<ValueType, NameType>) {
   const { active, label, payload } = props
   if (!active || !payload?.length) return null
 

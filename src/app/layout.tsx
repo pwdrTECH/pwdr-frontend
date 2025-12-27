@@ -1,8 +1,9 @@
-import { AppProviders } from "@/components/providers/AppProviders";
-import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
+import { AppProviders } from "@/components/providers/AppProviders"
+import type { Metadata } from "next"
+import localFont from "next/font/local"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { Toaster } from "@/components/ui/sonner"
 
 export const hnd = localFont({
   src: [
@@ -25,7 +26,14 @@ export const hnd = localFont({
   variable: "--font-helvetica-now-display",
   display: "swap",
   preload: true,
-});
+})
+
+export const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
 export const metadata: Metadata = {
   title: "Powder",
   description:
@@ -46,19 +54,19 @@ export const metadata: Metadata = {
     url: "https://powder.health",
     type: "website",
   },
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en">
-      <body className={`${hnd.variable} antialiased`}>
+      <body className={`${hnd.variable} ${inter.variable} antialiased`}>
         <AppProviders>{children}</AppProviders>
         <Toaster />
       </body>
     </html>
-  );
+  )
 }

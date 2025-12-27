@@ -2646,3 +2646,168 @@ export function ExcelFileIcon() {
     </svg>
   )
 }
+export function AngleUp() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Angle up</title>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M9.40814 6.90814C9.73358 6.5827 10.2612 6.5827 10.5867 6.90814L15.5867 11.9081C15.9121 12.2336 15.9121 12.7612 15.5867 13.0867C15.2612 13.4121 14.7336 13.4121 14.4081 13.0867L9.9974 8.67591L5.58665 13.0867C5.26121 13.4121 4.73358 13.4121 4.40814 13.0867C4.0827 12.7612 4.0827 12.2336 4.40814 11.9081L9.40814 6.90814Z"
+        fill="#B9B9B9"
+      />
+    </svg>
+  )
+}
+export function ClipboardIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Clipboard icon</title>
+      <path
+        d="M10 6H14C16 6 16 5 16 4C16 2 15 2 14 2H10C9 2 8 2 8 4C8 6 9 6 10 6Z"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16 4.02344C19.33 4.20344 21 5.43344 21 10.0034V16.0034C21 20.0034 20 22.0034 15 22.0034H9C4 22.0034 3 20.0034 3 16.0034V10.0034C3 5.44344 4.67 4.20344 8 4.02344"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function GearIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Gear icon</title>
+      <path
+        d="M2.5 7.59115V12.3995C2.5 14.1661 2.5 14.1661 4.16667 15.2911L8.75 17.9411C9.44167 18.3411 10.5667 18.3411 11.25 17.9411L15.8333 15.2911C17.5 14.1661 17.5 14.1661 17.5 12.4078V7.59115C17.5 5.83281 17.5 5.83281 15.8333 4.70781L11.25 2.05781C10.5667 1.65781 9.44167 1.65781 8.75 2.05781L4.16667 4.70781C2.5 5.83281 2.5 5.83281 2.5 7.59115Z"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 12.5C11.3807 12.5 12.5 11.3807 12.5 10C12.5 8.61929 11.3807 7.5 10 7.5C8.61929 7.5 7.5 8.61929 7.5 10C7.5 11.3807 8.61929 12.5 10 12.5Z"
+        stroke="#667085"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+export function EyeVisibilityOff() {
+  return (
+    <svg
+      width="30"
+      height="30"
+      viewBox="0 0 30 30"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Eye visibility off</title>
+      <path
+        d="M17.5319 12.4719L12.4719 17.5319C11.8219 16.8819 11.4219 15.9919 11.4219 15.0019C11.4219 13.0219 13.0219 11.4219 15.0019 11.4219C15.9919 11.4219 16.8819 11.8219 17.5319 12.4719Z"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M20.8237 8.76656C19.0737 7.44656 17.0737 6.72656 15.0037 6.72656C11.4737 6.72656 8.18375 8.80656 5.89375 12.4066C4.99375 13.8166 4.99375 16.1866 5.89375 17.5966C6.68375 18.8366 7.60375 19.9066 8.60375 20.7666"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.4219 22.5297C12.5619 23.0097 13.7719 23.2697 15.0019 23.2697C18.5319 23.2697 21.8219 21.1897 24.1119 17.5897C25.0119 16.1797 25.0119 13.8097 24.1119 12.3997C23.7819 11.8797 23.4219 11.3897 23.0519 10.9297"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5075 15.7031C18.2475 17.1131 17.0975 18.2631 15.6875 18.5231"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12.47 17.5312L5 25.0013"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M25.0013 5L17.5312 12.47"
+        stroke="#939FB3"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+export function DownloadIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 22 22"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Download Icon</title>
+      <path
+        d="M14.612 7.90625C17.812 8.18181 19.1187 9.82625 19.1187 13.4263V13.5418C19.1187 17.5151 17.5276 19.1063 13.5542 19.1063H7.76757C3.79424 19.1063 2.20312 17.5151 2.20312 13.5418V13.4263C2.20312 9.85292 3.49201 8.20847 6.63868 7.91514"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.6641 13.3343V3.21875"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.6431 5.19653L10.6653 2.21875L7.6875 5.19653"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
