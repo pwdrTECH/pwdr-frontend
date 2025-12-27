@@ -1,65 +1,87 @@
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
-}
+"use client"
 
+import type { ColumnDef } from "../_components/reports/ReportExportContext"
+
+// ---------- CSV ----------
 function escapeCsv(v: any) {
-  if (v === null || v === undefined) return ""
-  const s = String(v)
-  // wrap if contains commas, quotes, or newlines
+  const s = String(v ?? "")
+  // wrap if contains comma/quote/newline
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
   return s
 }
 
-export function exportToCsv<T>(args: {
+export function exportToCsv<T>({
+  fileName,
+  columns,
+  rows,
+}: {
   fileName: string
-  columns: { header: string; value: (row: T) => any }[]
+  columns: ColumnDef<T>[]
   rows: T[]
 }) {
-  const { fileName, columns, rows } = args
-  const header = columns.map((c) => escapeCsv(c.header)).join(",")
+  const headers = columns.map((c) => escapeCsv(c.header)).join(",")
   const lines = rows.map((r) =>
     columns.map((c) => escapeCsv(c.value(r))).join(",")
   )
-  const csv = [header, ...lines].join("\n")
-  downloadBlob(
-    new Blob([csv], { type: "text/csv;charset=utf-8" }),
-    fileName.endsWith(".csv") ? fileName : `${fileName}.csv`
-  )
+
+  const csv = [headers, ...lines].join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = fileName.toLowerCase().endsWith(".csv")
+    ? fileName
+    : `${fileName}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(a.href)
 }
 
-export async function exportToXlsx<T>(args: {
+// ---------- XLSX (ExcelJS) ----------
+export async function exportToXlsx<T>({
+  fileName,
+  sheetName = "Report",
+  columns,
+  rows,
+}: {
   fileName: string
   sheetName?: string
-  columns: { header: string; value: (row: T) => any }[]
+  columns: ColumnDef<T>[]
   rows: T[]
 }) {
-  // Lazy import to keep bundle light
-  const XLSX = await import("xlsx")
+  const ExcelJS = (await import("exceljs")).default
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet(sheetName)
 
-  const { fileName, sheetName = "Report", columns, rows } = args
+  // Header row
+  ws.addRow(columns.map((c) => c.header))
+  ws.getRow(1).font = { bold: true }
 
-  const data = rows.map((r) => {
-    const o: Record<string, any> = {}
-    for (const c of columns) o[c.header] = c.value(r)
-    return o
+  // Data rows
+  rows.forEach((r) => {
+    ws.addRow(columns.map((c) => c.value(r)))
   })
 
-  const ws = XLSX.utils.json_to_sheet(data, { skipHeader: false })
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  // Optional: reasonable column widths
+  ws.columns = columns.map((c) => ({
+    header: c.header,
+    key: c.header,
+    width: Math.min(Math.max(c.header.length + 6, 14), 40),
+  }))
 
-  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" })
-  downloadBlob(
-    new Blob([out], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-    fileName.endsWith(".xlsx") ? fileName : `${fileName}.xlsx`
-  )
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  })
+
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = fileName.toLowerCase().endsWith(".xlsx")
+    ? fileName
+    : `${fileName}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(a.href)
 }
