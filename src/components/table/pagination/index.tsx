@@ -57,8 +57,11 @@ export default function TablePagination({
     [totalPages, current, boundaryCount, siblingCount]
   )
 
-  const start = totalItems ? (current - 1) * pageSize + 1 : undefined
-  const end = totalItems ? Math.min(current * pageSize, totalItems) : undefined
+  const hasTotal = typeof totalItems === "number"
+  const total = hasTotal ? totalItems : 0
+
+  const start = hasTotal ? (current - 1) * pageSize + 1 : undefined
+  const end = hasTotal ? Math.min(current * pageSize, total) : undefined
 
   function go(to: number) {
     const next = clamp(to, 1, totalPages)
@@ -68,7 +71,7 @@ export default function TablePagination({
   return (
     <div
       className={cn(
-        "w-full h-[68px] flex items-center  border-t border-[#EEF1F6] px-4 py-3",
+        "w-full h-[68px] flex items-center border-t border-[#EEF1F6] px-4 py-3",
         className
       )}
     >
@@ -76,12 +79,14 @@ export default function TablePagination({
         <PaginationContent className="w-full flex items-center justify-between gap-2">
           {/* Left: range summary */}
           <div className="font-hnd font-medium text-[#475467] text-[14px]/[20px]">
-            {typeof start === "number" && typeof end === "number" && (
+            {hasTotal &&
+            typeof start === "number" &&
+            typeof end === "number" ? (
               <>
                 Showing {start.toLocaleString()}–{end.toLocaleString()} of{" "}
-                {totalItems!.toLocaleString()}
+                {total.toLocaleString()}
               </>
-            )}
+            ) : null}
           </div>
 
           {/* Center: page numbers */}
@@ -90,7 +95,7 @@ export default function TablePagination({
               {items.map((it, idx) =>
                 it.type === "page" ? (
                   <PaginationLink
-                    key={idx}
+                    key={`p-${idx + 1}`}
                     href="#"
                     aria-controls={controlsId}
                     isActive={it.value === current}
@@ -106,7 +111,7 @@ export default function TablePagination({
                     {it.value}
                   </PaginationLink>
                 ) : (
-                  <PaginationEllipsis key={idx} />
+                  <PaginationEllipsis key={`e-${idx + 1}`} />
                 )
               )}
             </div>

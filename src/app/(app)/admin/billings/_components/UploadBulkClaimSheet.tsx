@@ -1,26 +1,26 @@
-"use client";
+"use client"
 
-import { AddButon, CancelButton } from "@/components/form/button";
-import { CustomSheet } from "@/components/overlays/SideDialog";
-import { ExcelFileIcon, MarkedIcon, UploadFile } from "@/components/svgs";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import Image from "next/image";
-import * as React from "react";
-import { ClaimAnalysisResultSheet } from "./AnalysisResult";
+import { AddButon, CancelButton } from "@/components/form/button"
+import { CustomSheet } from "@/components/overlays/SideDialog"
+import { ExcelFileIcon, MarkedIcon, UploadFile } from "@/components/svgs"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import Image from "next/image"
+import * as React from "react"
+import { ClaimAnalysisResultSheet } from "./AnalysisResult"
 
-type BulkState = "idle" | "uploading" | "ready" | "analyzing" | "done";
+type BulkState = "idle" | "uploading" | "ready" | "analyzing" | "done"
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  const mb = kb / 1024;
-  return `${mb.toFixed(1)} MB`;
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(1)} KB`
+  const mb = kb / 1024
+  return `${mb.toFixed(1)} MB`
 }
 
 function AnalyzingSpinner({ size = 42 }: { size?: number }) {
-  const innerOffset = 4;
+  const innerOffset = 4
   return (
     <div
       className="relative flex items-center justify-center bg-[#D9D9D9]/30"
@@ -40,110 +40,112 @@ function AnalyzingSpinner({ size = 42 }: { size?: number }) {
         }}
       />
     </div>
-  );
+  )
 }
 
 export function UploadBulkClaimSheet({
   openResultSheet,
   onOpenResultChange,
 }: {
-  openResultSheet: boolean;
-  onOpenResultChange: (open: boolean) => void;
+  openResultSheet: boolean
+  onOpenResultChange: (open: boolean) => void
 }) {
-  const [open, setOpen] = React.useState(false);
-  const [state, setState] = React.useState<BulkState>("idle");
-  const [fileName, setFileName] = React.useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = React.useState(0);
-  const [fileSize, setFileSize] = React.useState<string>("");
+  const [open, setOpen] = React.useState(false)
+  const [state, setState] = React.useState<BulkState>("idle")
+  const [fileName, setFileName] = React.useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = React.useState(0)
+  const [fileSize, setFileSize] = React.useState<string>("")
 
   const uploadIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
+    null
+  )
   const analysisTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+    null
+  )
 
   const clearUploadInterval = () => {
     if (uploadIntervalRef.current) {
-      clearInterval(uploadIntervalRef.current);
-      uploadIntervalRef.current = null;
+      clearInterval(uploadIntervalRef.current)
+      uploadIntervalRef.current = null
     }
-  };
+  }
 
   const clearAnalysisTimeout = () => {
     if (analysisTimeoutRef.current) {
-      clearTimeout(analysisTimeoutRef.current);
-      analysisTimeoutRef.current = null;
+      clearTimeout(analysisTimeoutRef.current)
+      analysisTimeoutRef.current = null
     }
-  };
+  }
 
   const reset = () => {
-    setState("idle");
-    setFileName(null);
-    setFileSize("");
-    setUploadProgress(0);
-    clearUploadInterval();
-    clearAnalysisTimeout();
-  };
+    setState("idle")
+    setFileName(null)
+    setFileSize("")
+    setUploadProgress(0)
+    clearUploadInterval()
+    clearAnalysisTimeout()
+  }
 
   const startFakeUpload = () => {
-    clearUploadInterval();
-    setState("uploading");
-    setUploadProgress(0);
+    clearUploadInterval()
+    setState("uploading")
+    setUploadProgress(0)
 
     uploadIntervalRef.current = setInterval(() => {
       setUploadProgress((prev) => {
-        const next = Math.min(prev + 5, 100);
+        const next = Math.min(prev + 5, 100)
 
         if (next === 100) {
-          clearUploadInterval();
-          setState("ready");
+          clearUploadInterval()
+          setState("ready")
         }
 
-        return next;
-      });
-    }, 200); // ~4s total
-  };
+        return next
+      })
+    }, 200) // ~4s total
+  }
 
   const handleFileChange = (file: File) => {
-    setFileName(file.name);
-    setFileSize(formatFileSize(file.size));
-    startFakeUpload();
-  };
+    setFileName(file.name)
+    setFileSize(formatFileSize(file.size))
+    startFakeUpload()
+  }
 
   const handleAnalyze = () => {
-    if (!fileName || state !== "ready") return;
-    setState("analyzing");
+    if (!fileName || state !== "ready") return
+    setState("analyzing")
 
-    clearAnalysisTimeout();
+    clearAnalysisTimeout()
     analysisTimeoutRef.current = setTimeout(() => {
-      setState("done");
-    }, 2500); // fake analysis duration
-  };
+      setState("done")
+    }, 2500) // fake analysis duration
+  }
 
   const handleSheetChange = (next: boolean) => {
-    if (!next) reset();
-    setOpen(next);
-  };
+    if (!next) reset()
+    setOpen(next)
+  }
 
   // cleanup on unmount – inline the cleanup to avoid extra deps in the array
   React.useEffect(() => {
     return () => {
       if (uploadIntervalRef.current) {
-        clearInterval(uploadIntervalRef.current);
-        uploadIntervalRef.current = null;
+        clearInterval(uploadIntervalRef.current)
+        uploadIntervalRef.current = null
       }
       if (analysisTimeoutRef.current) {
-        clearTimeout(analysisTimeoutRef.current);
-        analysisTimeoutRef.current = null;
+        clearTimeout(analysisTimeoutRef.current)
+        analysisTimeoutRef.current = null
       }
-    };
-  }, []);
+    }
+  }, [])
 
   return (
     <CustomSheet
       title="Bulk Claim Analysis"
       subtitle="Add file to analyze claims"
+      position="center"
+      panelClassName="h-full max-h-[750px] top-[137px] w-[calc(100vw-32px)] md:w-[522px]"
       open={open}
       trigger={
         <AddButon
@@ -162,7 +164,7 @@ export function UploadBulkClaimSheet({
         </div>
       }
     >
-      <div className="w-[522px] flex flex-col">
+      <div className="w-full flex flex-col">
         {/* Upload area */}
         <label className="w-full h-[206px] py-6 block cursor-pointer rounded-3xl border border-[#E9EAEB] bg-[#FFFFFF] text-center">
           <input
@@ -170,8 +172,8 @@ export function UploadBulkClaimSheet({
             className="hidden"
             accept=".csv,.xlsx,.xls,.pdf"
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileChange(file);
+              const file = e.target.files?.[0]
+              if (file) handleFileChange(file)
             }}
           />
           <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-[0px_4px_4px_0px_#0000000A] border border-[#E9EAEB]">
@@ -306,5 +308,5 @@ export function UploadBulkClaimSheet({
         )}
       </div>
     </CustomSheet>
-  );
+  )
 }

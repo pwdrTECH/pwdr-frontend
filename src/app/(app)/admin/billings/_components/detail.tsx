@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { CustomSheet } from "@/components/overlays/SideDialog";
-import { Button } from "@/components/ui/button";
+import { CustomSheet } from "@/components/overlays/SideDialog"
+import { Button } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -9,27 +9,27 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import type { BillingRow } from "../page";
-import { SignatureIcon } from "@/components/svgs";
-import Image from "next/image";
+} from "@/components/ui/table"
+import type { BillingRow } from "../page"
+import { SignatureIcon } from "@/components/svgs"
+import Image from "next/image"
 
 const formatNaira = (v: number) =>
   `₦${v.toLocaleString("en-NG", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  })}`;
+  })}`
 
-type DetailVariant = "single" | "multi";
+type DetailVariant = "single" | "multi"
 
 interface BillServiceLine {
-  id: string;
-  encounterDate: string;
-  enrolleeId: string;
-  diagnosis: string;
-  code: string;
-  services: { label: string; cost: number; color: string }[];
-  drugs?: { label: string; cost: number; color: string }[];
+  id: string
+  encounterDate: string
+  enrolleeId: string
+  diagnosis: string
+  code: string
+  services: { label: string; cost: number; color: string }[]
+  drugs?: { label: string; cost: number; color: string }[]
 }
 
 const SINGLE_LINES: BillServiceLine[] = [
@@ -50,7 +50,7 @@ const SINGLE_LINES: BillServiceLine[] = [
       { label: "Panadol", cost: 1_000, color: "#9B59B6" },
     ],
   },
-];
+]
 
 const MULTI_LINES: BillServiceLine[] = [
   {
@@ -97,13 +97,13 @@ const MULTI_LINES: BillServiceLine[] = [
     services: [{ label: "Malaria Test", cost: 5_000, color: "#00B894" }],
     drugs: [{ label: "Lyntemin Tablets X12", cost: 4_250, color: "#9B59B6" }],
   },
-];
+]
 
 interface BillDetailSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  bill: BillingRow;
-  variant: DetailVariant;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  bill: BillingRow
+  variant: DetailVariant
 }
 
 export function BillDetailSheet({
@@ -112,17 +112,17 @@ export function BillDetailSheet({
   bill,
   variant,
 }: BillDetailSheetProps) {
-  const lines = variant === "single" ? SINGLE_LINES : MULTI_LINES;
+  const lines = variant === "single" ? SINGLE_LINES : MULTI_LINES
 
   const subtotal = lines.reduce(
     (sum, l) =>
       sum +
       l.services.reduce((s, x) => s + x.cost, 0) +
       (l.drugs?.reduce((s, x) => s + x.cost, 0) ?? 0),
-    0,
-  );
-  const tax = subtotal * 0.1;
-  const totalDue = subtotal + tax;
+    0
+  )
+  const tax = subtotal * 0.1
+  const totalDue = subtotal + tax
 
   return (
     <CustomSheet
@@ -130,10 +130,11 @@ export function BillDetailSheet({
       subtitle={`${bill.provider} · ${bill.dueDate}`}
       open={open}
       onOpenChange={onOpenChange}
+      position="center"
       // extra padding because this is a “document”
       contentClassName="px-10 py-6 space-y-8"
       footer={
-        <div className="flex items-center justify-between border-t border-[#EAECF0] pt-4">
+        <div className="w-full flex items-center justify-between border-t border-[#EAECF0] pt-4">
           <div className="text-[11px] text-[#9CA3AF]">
             Page {variant === "single" ? "28/28" : "1/28"}
           </div>
@@ -159,7 +160,12 @@ export function BillDetailSheet({
       <div className="flex items-start justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E5F4FF]">
-            <Image src="/" alt="HMO service logo" width={64} height={64} />
+            <Image
+              src="/images/tch.png"
+              alt="HMO service logo"
+              width={64}
+              height={64}
+            />
           </div>
           <div className="flex flex-col gap-1 text-sm">
             <span className="font-semibold text-[#111827]">
@@ -204,11 +210,11 @@ export function BillDetailSheet({
             {lines.map((line, idx) => {
               const servicesTotal = line.services.reduce(
                 (s, x) => s + x.cost,
-                0,
-              );
+                0
+              )
               const drugsTotal =
-                line.drugs?.reduce((s, x) => s + x.cost, 0) ?? 0;
-              const total = servicesTotal + drugsTotal;
+                line.drugs?.reduce((s, x) => s + x.cost, 0) ?? 0
+              const total = servicesTotal + drugsTotal
 
               return (
                 <TableRow key={line.id}>
@@ -263,7 +269,7 @@ export function BillDetailSheet({
                     </div>
                   </TableCell>
                 </TableRow>
-              );
+              )
             })}
           </TableBody>
         </Table>
@@ -330,5 +336,5 @@ export function BillDetailSheet({
         </div>
       </div>
     </CustomSheet>
-  );
+  )
 }

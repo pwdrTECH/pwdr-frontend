@@ -67,7 +67,7 @@ export default function DashboardPage() {
               18 overdue
             </span>
           }
-          icon={<WarningIcon />}
+          icon={<WarningIcon className="text-[#027FA3]" />}
         />
       </section>
       {/* Enrollees + Schemes */}

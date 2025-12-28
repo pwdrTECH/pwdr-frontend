@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { DateRangePicker } from "@/components/filters/date-range";
-import { SearchField } from "@/components/filters/search";
-import { FilterSelect } from "@/components/filters/select";
-import TablePagination from "@/components/table/pagination";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { DateRangePicker } from "@/components/filters/date-range"
+import { SearchField } from "@/components/filters/search"
+import { FilterSelect } from "@/components/filters/select"
+import TablePagination from "@/components/table/pagination"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -14,23 +14,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-import { useMemo, useState } from "react";
-import { BulkClaimAnalysisSheet } from "./_components/BulkClaimAnalysis";
-import { BillDetailSheet } from "./_components/detail";
-import { UploadBulkClaimSheet } from "./_components/UploadBulkClaimSheet";
+} from "@/components/ui/table"
+import { cn } from "@/lib/utils"
+import { useMemo, useState } from "react"
+import { BulkClaimAnalysisSheet } from "./_components/BulkClaimAnalysis"
+import { BillDetailSheet } from "./_components/detail"
+import { UploadBulkClaimSheet } from "./_components/UploadBulkClaimSheet"
 
-export type BillStatus = "all" | "paid" | "unpaid";
+export type BillStatus = "all" | "paid" | "unpaid"
 
 export interface BillingRow {
-  id: string;
-  dueDate: string;
-  billId: string;
-  provider: string;
-  claimsCount: number;
-  totalCost: number;
-  status: BillStatus;
+  id: string
+  dueDate: string
+  billId: string
+  provider: string
+  claimsCount: number
+  totalCost: number
+  status: BillStatus
 }
 
 // TODO: replace with real API
@@ -71,77 +71,77 @@ const MOCK_BILLS: BillingRow[] = [
     totalCost: 2_500_000,
     status: "paid",
   },
-];
+]
 
 const formatNaira = (v: number) =>
   `₦${v.toLocaleString("en-NG", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
-  })}`;
+  })}`
 const parseDate = (value: string): Date | null => {
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
-};
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
 export default function BillingPage() {
-  const [search, setSearch] = useState("");
-  const [provider, setProvider] = useState<string>("all");
-  const [price, setPrice] = useState<string>("all");
-  const [startDate, setStartDate] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState<string | null>(null);
-  const [status, setStatus] = useState<"all" | BillStatus>("all");
-  const [page, setPage] = useState(1);
-  const [selectedBill, setSelectedBill] = useState<BillingRow | null>(null);
+  const [search, setSearch] = useState("")
+  const [provider, setProvider] = useState<string>("all")
+  const [price, setPrice] = useState<string>("all")
+  const [startDate, setStartDate] = useState<string | null>(null)
+  const [endDate, setEndDate] = useState<string | null>(null)
+  const [status, setStatus] = useState<"all" | BillStatus>("all")
+  const [page, setPage] = useState(1)
+  const [selectedBill, setSelectedBill] = useState<BillingRow | null>(null)
   const [detailVariant, setDetailVariant] = useState<"single" | "multi">(
-    "single",
-  );
-  const [showBulkSheet, setShowBulkSheet] = useState(false);
-  const [showResultSheet, setShowResultSheet] = useState(false);
+    "single"
+  )
+  const [showBulkSheet, setShowBulkSheet] = useState(false)
+  const [showResultSheet, setShowResultSheet] = useState(false)
 
-  const pageSize = 10;
+  const pageSize = 10
 
-  const billsDue = 21_400_000;
-  const billsPaid = 4_600_000;
-  const totalBills = 23;
-  const totalCost = 26_000_000;
+  const billsDue = 21_400_000
+  const billsPaid = 4_600_000
+  const totalBills = 23
+  const totalCost = 26_000_000
 
   const filteredBills = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim().toLowerCase()
 
     return MOCK_BILLS.filter((b) => {
       const matchesSearch =
         !q ||
         b.billId.toLowerCase().includes(q) ||
-        b.provider.toLowerCase().includes(q);
+        b.provider.toLowerCase().includes(q)
 
-      const matchesProvider = provider === "all" || b.provider === provider;
+      const matchesProvider = provider === "all" || b.provider === provider
 
-      const matchesStatus = status === "all" || b.status === status;
+      const matchesStatus = status === "all" || b.status === status
 
       // date range
-      let matchesDate = true;
+      let matchesDate = true
       if (startDate || endDate) {
-        const billDate = parseDate(b.dueDate);
+        const billDate = parseDate(b.dueDate)
         if (billDate) {
           if (startDate) {
-            const s = parseDate(startDate);
-            if (s && billDate < s) matchesDate = false;
+            const s = parseDate(startDate)
+            if (s && billDate < s) matchesDate = false
           }
           if (endDate) {
-            const e = parseDate(endDate);
+            const e = parseDate(endDate)
             if (e) {
-              const eod = new Date(e);
-              eod.setHours(23, 59, 59, 999);
-              if (billDate > eod) matchesDate = false;
+              const eod = new Date(e)
+              eod.setHours(23, 59, 59, 999)
+              if (billDate > eod) matchesDate = false
             }
           }
         }
       }
 
-      return matchesSearch && matchesProvider && matchesStatus && matchesDate;
-    });
-  }, [search, provider, status, startDate, endDate]);
-  const paged = filteredBills.slice((page - 1) * pageSize, page * pageSize);
-  const controlsId = "billing-table-body";
+      return matchesSearch && matchesProvider && matchesStatus && matchesDate
+    })
+  }, [search, provider, status, startDate, endDate])
+  const paged = filteredBills.slice((page - 1) * pageSize, page * pageSize)
+  const controlsId = "billing-table-body"
 
   return (
     <div className="flex flex-col gap-6">
@@ -192,8 +192,8 @@ export default function BillingPage() {
 
               <SearchField
                 onChange={(value) => {
-                  setSearch(value);
-                  setPage(1);
+                  setSearch(value)
+                  setPage(1)
                 }}
               />
               {/* Filters */}
@@ -201,8 +201,8 @@ export default function BillingPage() {
                 <FilterSelect
                   value={provider}
                   onChange={(v) => {
-                    setProvider(v);
-                    setPage(1);
+                    setProvider(v)
+                    setPage(1)
                   }}
                   placeholder="All Providers"
                   options={[
@@ -214,8 +214,8 @@ export default function BillingPage() {
                 <FilterSelect
                   value={price}
                   onChange={(v) => {
-                    setPrice(v);
-                    setPage(1);
+                    setPrice(v)
+                    setPage(1)
                   }}
                   placeholder="₦0 - ₦999999999"
                   options={[
@@ -231,8 +231,8 @@ export default function BillingPage() {
                 <FilterSelect
                   value={status}
                   onChange={(v) => {
-                    setStatus(v as BillStatus);
-                    setPage(1);
+                    setStatus(v as BillStatus)
+                    setPage(1)
                   }}
                   placeholder="Any status"
                   options={[
@@ -246,9 +246,9 @@ export default function BillingPage() {
                 />
                 <DateRangePicker
                   onChange={(start, end) => {
-                    setStartDate(start);
-                    setEndDate(end);
-                    setPage(1);
+                    setStartDate(start)
+                    setEndDate(end)
+                    setPage(1)
                   }}
                 />
               </div>
@@ -295,8 +295,8 @@ export default function BillingPage() {
                         type="button"
                         className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
                         onClick={() => {
-                          setSelectedBill(row);
-                          setDetailVariant(idx % 2 === 0 ? "single" : "multi");
+                          setSelectedBill(row)
+                          setDetailVariant(idx % 2 === 0 ? "single" : "multi")
                         }}
                       >
                         Review
@@ -354,7 +354,7 @@ export default function BillingPage() {
         <BillDetailSheet
           open={!!selectedBill}
           onOpenChange={(open) => {
-            if (!open) setSelectedBill(null);
+            if (!open) setSelectedBill(null)
           }}
           bill={selectedBill}
           variant={detailVariant}
@@ -366,12 +366,12 @@ export default function BillingPage() {
         open={showBulkSheet}
         onOpenChange={setShowBulkSheet}
         onShowResult={() => {
-          setShowBulkSheet(false);
-          setShowResultSheet(true);
+          setShowBulkSheet(false)
+          setShowResultSheet(true)
         }}
       />
     </div>
-  );
+  )
 }
 
 function SummaryCard({
@@ -379,9 +379,9 @@ function SummaryCard({
   value,
   valueClass,
 }: {
-  label: string;
-  value: string;
-  valueClass?: string;
+  label: string
+  value: string
+  valueClass?: string
 }) {
   return (
     <Card className="h-31 rounded-[12px] border border-[#EAECF0] shadow-none p-4">
@@ -393,7 +393,7 @@ function SummaryCard({
           <span
             className={cn(
               "font-hnd font-bold text-[24px]/[40px] tracking-[-0.02em] text-[#101928]",
-              valueClass,
+              valueClass
             )}
           >
             {value}
@@ -401,5 +401,5 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
