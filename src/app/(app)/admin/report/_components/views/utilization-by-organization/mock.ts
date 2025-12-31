@@ -5,59 +5,17 @@ export type OrgRow = {
   requests: number
   totalCost: number
   avgCostPerEnrollee: number
-  premiumPool: string
-
+  premiumPool: number
+  totalRequests: number
+  approvedClaims?: number
+  deniedClaims?: number
+  utilizationCost?: number
   service?: string
   location?: string
   scheme?: string
   plan?: string
   costRange?: string
 }
-
-export const MOCK_ORG_ROWS: OrgRow[] = Array.from({ length: 20 }).map(
-  (_, i) => {
-    const orgs = [
-      "CBN",
-      "NCC",
-      "NIA",
-      "NPA",
-      "NTA",
-      "NYSC",
-      "FIRS",
-      "DSS",
-      "FRSC",
-      "NCDC",
-    ]
-    const organization = orgs[i % orgs.length]
-    const enrolleeCount = 250 + ((i * 17) % 120)
-    const requests = 1200 + ((i * 233) % 5200)
-    const totalCost = 2_000_000 + ((i * 1_384_277) % 20_000_000)
-    const avgCostPerEnrollee = Math.round(
-      totalCost / Math.max(1, enrolleeCount)
-    )
-
-    const service = ["inpatient", "outpatient", "labs", "pharmacy"][i % 4]
-    const location = ["abuja", "lagos", "kano", "rivers"][i % 4]
-    const scheme = ["nhis", "phis", "tship", "nysc"][i % 4]
-    const plan = ["platinum", "gold", "silver"][i % 3]
-    const costRange = ["0-100k", "100k-500k", "500k-1m", "1m+"][i % 4]
-
-    return {
-      id: String(i + 1),
-      organization,
-      enrolleeCount,
-      requests,
-      totalCost,
-      avgCostPerEnrollee,
-      premiumPool: "Platinum Plan",
-      service,
-      location,
-      scheme,
-      plan,
-      costRange,
-    }
-  }
-)
 
 /** Claims comparison series (reuse your existing ClaimsComparisonCard shape if you already have it) */
 export const MOCK_ORG_CLAIMS_SERIES = [

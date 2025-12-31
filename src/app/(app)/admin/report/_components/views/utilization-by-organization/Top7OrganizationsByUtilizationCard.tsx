@@ -11,7 +11,17 @@ import {
   StatusRangePills,
   type RangeKey,
 } from "../requests-by-provider/StatusRangePills"
-import type { TopOrgDatum } from "./mock"
+
+export type TopOrgDatum = {
+  key: string
+  label: string
+  value: number
+  amount: string // already formatted e.g. "₦ 42,484,492.02"
+  percent: number
+  color: string
+  code?: string
+  logoUrl?: string
+}
 
 function Donut({ data }: { data: TopOrgDatum[] }) {
   return (
@@ -55,11 +65,12 @@ function OrgCard({ d }: { d: TopOrgDatum }) {
               {d.label}
             </div>
             <div className="text-[16px] text-[#475467] leading-[20px]">
-              13/O/W7E270
+              {d.code ?? "—"}
             </div>
           </div>
         </div>
       </div>
+
       <div className="w-full flex justify-between mt-4">
         <div className="flex items-center gap-4">
           <Square color={d.color} />
@@ -92,6 +103,8 @@ export function Top7OrganizationsByUtilizationCard({
 }) {
   const [hidden, setHidden] = React.useState(false)
 
+  const safeData = Array.isArray(data) ? data : []
+
   return (
     <div
       className={cn(
@@ -121,12 +134,16 @@ export function Top7OrganizationsByUtilizationCard({
         <div className="h-[340px] flex items-center justify-center text-[#7A7A7A] text-[14px]">
           Content is hidden
         </div>
+      ) : safeData.length === 0 ? (
+        <div className="h-[340px] flex items-center justify-center text-[#7A7A7A] text-[14px]">
+          No data available.
+        </div>
       ) : (
         <div className="mt-6 flex gap-8">
-          <Donut data={data} />
+          <Donut data={safeData} />
 
           <div className="flex-1 grid grid-cols-2 gap-6">
-            {data.map((d) => (
+            {safeData.map((d) => (
               <OrgCard key={d.key} d={d} />
             ))}
           </div>

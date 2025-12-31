@@ -9,31 +9,10 @@ export type UtilSchemeRow = {
   totalCost: number
   avgCostPerEnrollee: number
   approvalRateLabel: string
-
-  // optional filters
   service?: string
   location?: string
   costRange?: string
 }
-
-export const MOCK_SCHEME_ROWS: UtilSchemeRow[] = Array.from({ length: 24 }).map(
-  (_, i) => ({
-    id: String(i + 1),
-    scheme: "nhis",
-    schemeLabel: "NHIS",
-    plan: "platinum",
-    planLabel: "Platinum Plan",
-    enrolleeName: "Muhammad Sahab",
-    totalRequests: [327, 300, 286][i % 3],
-    totalCost: [4384277, 3283484][i % 2],
-    avgCostPerEnrollee: [4384277, 3283484][i % 2],
-    approvalRateLabel: "₦ 4,384,277",
-
-    service: "consultation",
-    location: ["abuja", "lagos", "kano"][i % 3],
-    costRange: "100k-500k",
-  })
-)
 
 export const MOCK_TOP_SCHEMES_SERIES = [
   { m: "Jul", tship: 12000, nhis: 11000 },

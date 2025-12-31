@@ -1,13 +1,13 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
-import apiClient from "./client"
+import { apiClient } from "@/lib/api/client"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-/* ============================
-   Shared types (reuse)
-============================ */
+/* =========================================================
+   Shared helpers / types
+========================================================= */
 
-export interface BillingPagination {
+export interface ReportsPagination {
   current_page: number
   per_page: number
   total: number
@@ -16,63 +16,150 @@ export interface BillingPagination {
   has_prev: boolean
 }
 
-/* ============================
-   Billing list
-============================ */
+export type ApiStatus = "success" | "empty" | "error" | string
 
-export type BillingStatus =
-  | "pending"
-  | "approved"
-  | "paid"
-  | "rejected"
-  | "flagged"
-  | "queried"
-  | string
-
-export interface BillListItem {
-  id: number
-  bill_id?: string | number
-  provider_id?: number | string
-  provider_name?: string | null
-
-  total_cost?: number | string | null
-  created_at?: string | null
-  start_date?: string | null
-  end_date?: string | null
-
-  status?: BillingStatus
-  remark?: string | null
-
-  // allow extra backend fields
+export type ReportResponse<TSummary, TRow> = {
+  status: ApiStatus
+  data?: {
+    summary: TSummary
+    line_listing: TRow[]
+    pagination: ReportsPagination
+  }
+  message?: string
   [key: string]: any
 }
 
-export interface BillingFilters {
+function makeEmptyPagination(page: number, limit: number): ReportsPagination {
+  return {
+    current_page: page,
+    per_page: limit,
+    total: 0,
+    total_pages: 0,
+    has_next: false,
+    has_prev: false,
+  }
+}
+
+/** Stable stringify for deterministic react-query keys */
+function stableStringify(value: any): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
+  const keys = Object.keys(value).sort()
+  const entries = keys.map(
+    (k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`
+  )
+  return `{${entries.join(",")}}`
+}
+function stableKey(filters: Record<string, any>) {
+  return stableStringify(filters ?? {})
+}
+
+/* =========================================================
+   Billing list endpoint (useBilling)
+   NOTE: adjust URL if yours differs.
+========================================================= */
+
+export type BillingFilters = {
   page?: number
   limit?: number
-  start_date?: string // "YYYY-MM-DD" (or what your API expects)
+  start_date?: string
   end_date?: string
-  provider_id?: string | number
+  provider_id?: string
   min_cost?: string | number
   max_cost?: string | number
   status?: string
 }
 
-export interface BillingApiResponse {
-  status: "success" | "empty" | "error" | string
-  data: BillListItem[]
-  pagination?: BillingPagination
-  message?: string
+export type BillingSummary = {
+  total_bills_due?: number
+  total_bills_paid?: number
+  number_of_bills?: number
+  total_cost_of_bills?: number
   [key: string]: any
 }
 
+export type BillingListItem = {
+  invoice_number?: string
+  due_date?: string
+  provider_name?: string
+  no_of_claims?: number | string
+  total_cost?: number | string
+  status?: string
+  [key: string]: any
+}
+
+const EMPTY_BILLING_SUMMARY: BillingSummary = {
+  total_bills_due: 0,
+  total_bills_paid: 0,
+  number_of_bills: 0,
+  total_cost_of_bills: 0,
+}
+
+async function fetchBilling({
+  body,
+  page,
+  limit,
+}: {
+  body: Record<string, any>
+  page: number
+  limit: number
+}): Promise<ReportResponse<BillingSummary, BillingListItem>> {
+  const res = await apiClient.post<
+    ReportResponse<BillingSummary, BillingListItem>
+  >("/fetch-billing.php", body)
+
+  const payload = res.data
+  if (!payload) throw new Error("Failed to fetch billing")
+
+  const incoming = payload.data
+
+  const safePagination: ReportsPagination =
+    incoming?.pagination ?? makeEmptyPagination(page, limit)
+
+  const safeListing: BillingListItem[] = Array.isArray(incoming?.line_listing)
+    ? (incoming?.line_listing as BillingListItem[])
+    : []
+
+  if (payload.status === "success") {
+    return {
+      ...payload,
+      data: {
+        summary: (incoming?.summary ?? {}) as BillingSummary,
+        line_listing: safeListing,
+        pagination: safePagination,
+      },
+    }
+  }
+
+  if (payload.status === "empty") {
+    return {
+      ...payload,
+      status: "success",
+      data: {
+        summary: (incoming?.summary ?? {}) as BillingSummary,
+        line_listing: [],
+        pagination: makeEmptyPagination(page, limit),
+      },
+    }
+  }
+
+  throw new Error(payload.message || "Failed to fetch billing")
+}
+
 export function useBilling(filters: BillingFilters = {}) {
+  const key = stableKey(filters)
+
   return useQuery({
-    queryKey: ["billing", filters],
-    queryFn: async (): Promise<BillingApiResponse> => {
+    queryKey: ["billing", "list", key],
+    queryFn: async (): Promise<
+      ReportResponse<BillingSummary, BillingListItem>
+    > => {
+      const page = filters.page ?? 1
+      const limit = filters.limit ?? 10
+
       const body = {
-        page: filters.page ?? 1,
-        limit: filters.limit ?? 20,
+        page,
+        limit,
         start_date: filters.start_date ?? "",
         end_date: filters.end_date ?? "",
         provider_id: filters.provider_id ?? "",
@@ -81,104 +168,123 @@ export function useBilling(filters: BillingFilters = {}) {
         status: filters.status ?? "",
       }
 
-      const res = await apiClient.post<BillingApiResponse>(
-        "/fetch-billing.php",
-        body
-      )
+      const normalized = await fetchBilling({ body, page, limit })
 
-      const payload = res.data
-
-      if (!payload) {
-        throw new Error("Failed to fetch billing")
-      }
-
-      if (payload.status === "success") {
-        return {
-          ...payload,
-          data: Array.isArray(payload.data) ? payload.data : [],
-        }
-      }
-
-      if (payload.status === "empty") {
-        return {
-          ...payload,
-          status: "success",
-          data: [],
-          pagination: payload.pagination ?? {
-            current_page: body.page,
-            per_page: body.limit,
-            total: 0,
-            total_pages: 0,
-            has_next: false,
-            has_prev: false,
+      return {
+        ...normalized,
+        data: {
+          summary: {
+            ...EMPTY_BILLING_SUMMARY,
+            ...(normalized.data?.summary ?? {}),
           },
-        }
+          line_listing: normalized.data?.line_listing ?? [],
+          pagination:
+            normalized.data?.pagination ?? makeEmptyPagination(page, limit),
+        },
       }
-
-      throw new Error(payload.message || "Failed to fetch billing")
     },
   })
 }
 
-/* ============================
-   Billing details (optional)
-   Only include if you have an endpoint for it.
-============================ */
+/* =========================================================
+   set-invoice-paid (POST)
+========================================================= */
 
-export interface BillDetail {
-  id?: number
-  bill_id?: string | number
-
-  provider_id?: number | string
-  provider_name?: string | null
-
-  start_date?: string | null
-  end_date?: string | null
-
-  status?: BillingStatus
-  total_cost?: string | number | null
-
-  // e.g. claim list, items, etc.
-  items?: any[]
-
+export type SetInvoicePaidResponse = {
+  status: "success" | "error" | string
+  message?: string
   [key: string]: any
 }
 
-export interface BillingDetailsApiResponse {
-  status: "success" | "empty" | "error" | string
-  data?: BillDetail
-  message?: string
+async function setInvoicePaid(invoice_number: string) {
+  const invoice = String(invoice_number ?? "").trim()
+  if (!invoice) throw new Error("invoice_number is required")
+
+  const res = await apiClient.post<SetInvoicePaidResponse>(
+    "/set-invoice-paid.php",
+    {
+      invoice_number: invoice,
+    }
+  )
+
+  const payload = res.data
+  if (!payload) throw new Error("Failed to mark invoice as paid")
+  if (payload.status !== "success") {
+    throw new Error(payload.message || "Failed to mark invoice as paid")
+  }
+  return payload
 }
 
-export interface BillingDetailsRequest {
-  bill_id?: number | string
-  id?: number
-}
+export function useSetInvoicePaid() {
+  const qc = useQueryClient()
 
-export function useBillingDetails(params: BillingDetailsRequest) {
-  return useQuery({
-    queryKey: ["billing-details", params],
-    enabled: !!(params?.bill_id || params?.id),
-    queryFn: async (): Promise<BillDetail | null> => {
-      // change endpoint/body to your real details API if it exists
-      const body = {
-        bill_id: params.bill_id ?? "",
-        id: params.id ?? "",
-      }
-
-      const res = await apiClient.post<BillingDetailsApiResponse>(
-        "/fetch-billing-details.php",
-        body
-      )
-
-      const payload = res.data
-
-      if (!payload) throw new Error("Failed to fetch billing details")
-
-      if (payload.status === "success") return payload.data ?? null
-      if (payload.status === "empty") return null
-
-      throw new Error(payload.message || "Failed to fetch billing details")
+  return useMutation({
+    mutationFn: async (invoice_number: string) =>
+      setInvoicePaid(invoice_number),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["billing", "list"] })
     },
+  })
+}
+
+export type BillingDetailsItem = {
+  encounter_date: string
+  enrolee_id: string
+  enrolee_name: string
+  diagnosis: string
+  services: {
+    code: string
+    items: { service_name: string; item_type: string; cost: number }[]
+    total: number
+  }[]
+  total_cost: number
+}
+
+export type BillingDetailsResponse = {
+  status: "success" | "error" | string
+  data?: BillingDetailsItem[]
+  message?: string
+  [key: string]: any
+}
+
+function normalizeBillingDetails(data: BillingDetailsItem[]) {
+  const map = new Map<string, BillingDetailsItem>()
+
+  for (const row of data ?? []) {
+    const codes = (row.services ?? []).map((s) => s.code).join("|")
+    const key = `${row.encounter_date}|${row.enrolee_id}|${row.diagnosis}|${codes}`
+    if (!map.has(key)) map.set(key, row)
+  }
+
+  return Array.from(map.values())
+}
+
+async function fetchBillingDetails(invoice_number: string) {
+  const invoice = String(invoice_number ?? "").trim()
+  if (!invoice) throw new Error("invoice_number is required")
+
+  const url = `/fetch-billing-details.php?invoice_number=${encodeURIComponent(
+    invoice
+  )}`
+
+  const res = await apiClient.get<BillingDetailsResponse>(url)
+  const payload = res.data
+
+  if (!payload) throw new Error("Failed to fetch billing details")
+  if (payload.status !== "success") {
+    throw new Error(payload.message || "Failed to fetch billing details")
+  }
+
+  const list = Array.isArray(payload.data) ? payload.data : []
+  return normalizeBillingDetails(list)
+}
+
+export function useBillingDetails(invoice_number?: string, enabled = true) {
+  const inv = String(invoice_number ?? "").trim()
+
+  return useQuery({
+    queryKey: ["billing", "details", inv],
+    enabled: enabled && !!inv,
+    queryFn: async () => fetchBillingDetails(inv),
   })
 }

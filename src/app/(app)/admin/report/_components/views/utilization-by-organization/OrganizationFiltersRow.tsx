@@ -66,10 +66,25 @@ export function OrganizationFiltersRow({ value, onChange }: Props) {
     costRange: value?.costRange ?? "__all__",
   })
 
+  // ✅ keep local state in sync if parent updates `value` (no biomelint deps issues)
+  React.useEffect(() => {
+    if (!value) return
+    setFilters((prev) => ({
+      ...prev,
+      service: value.service ?? prev.service,
+      location: value.location ?? prev.location,
+      scheme: value.scheme ?? prev.scheme,
+      plan: value.plan ?? prev.plan,
+      costRange: value.costRange ?? prev.costRange,
+    }))
+  }, [value])
+
   function patch<K extends keyof Filters>(k: K, v: Filters[K]) {
-    const next = { ...filters, [k]: v }
-    setFilters(next)
-    onChange?.(next)
+    setFilters((prev) => {
+      const next = { ...prev, [k]: v }
+      onChange?.(next)
+      return next
+    })
   }
 
   return (

@@ -1,6 +1,11 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import type { EnroleeRequestsSummary } from "@/lib/api/reports"
+
+function fmtNaira(n: number) {
+  return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
+}
 
 function Stat({
   label,
@@ -26,19 +31,38 @@ function Stat({
   )
 }
 
-export function EnrolleeStatsRow() {
+export function EnrolleeStatsRow({
+  summary,
+}: {
+  summary?: EnroleeRequestsSummary | null
+}) {
+  const s = summary ?? {
+    total_requests_count: 0,
+    total_claims_amount: 0,
+    total_denied_count: 0,
+    total_approved_claims_amount: 0,
+    rejected_claims_amount: 0,
+    pending_claims_amount: 0,
+  }
+
   return (
     <div className="w-full border-b border-[#EEF0F5] px-6 py-8">
       <div className="grid grid-cols-5 gap-8">
-        <Stat label="Total Enrollee" value="263" />
-        <Stat label="Total claims" value="₦ 25,748,801" />
-        <Stat label="Approved claims" value="₦ 25,748,801" />
+        <Stat label="Total Requests" value={String(s.total_requests_count)} />
+        <Stat label="Total claims" value={fmtNaira(s.total_claims_amount)} />
+        <Stat
+          label="Approved claims"
+          value={fmtNaira(s.total_approved_claims_amount)}
+        />
         <Stat
           label="Rejected claims"
-          value="₦ 3,748,801"
+          value={fmtNaira(s.rejected_claims_amount)}
           valueClassName="text-[#F04438]"
         />
-        <Stat label="Pending Claims" value="₦ 5,834,841" />
+        <Stat
+          label="Pending Claims"
+          value={fmtNaira(s.pending_claims_amount)}
+        />
       </div>
     </div>
   )

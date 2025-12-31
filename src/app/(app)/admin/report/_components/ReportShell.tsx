@@ -42,13 +42,12 @@ export function ReportShell({ active, onActiveChange }: Props) {
               <ReportHeaderRow title={title} />
 
               <div className="flex-1 overflow-y-auto">
-                {active === "requests_by_provider" && (
-                  <RequestsByProviderView />
-                )}
                 {active === "requests_by_enrollee" && (
                   <RequestsByEnrolleeView />
                 )}
-
+                {active === "requests_by_provider" && (
+                  <RequestsByProviderView />
+                )}
                 {active === "util_by_enrollee" && <UtilizationByEnrolleeView />}
                 {active === "util_by_diagnosis" && (
                   <UtilizationByDiagnosisView />

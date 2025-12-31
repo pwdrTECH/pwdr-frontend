@@ -9,8 +9,10 @@ import { StatusLegend } from "./StatusLegend"
 import type { RangeKey } from "./StatusRangePills"
 import { StatusRangePills } from "./StatusRangePills"
 
-type StatusDatum = {
-  key: "approved" | "rejected" | "pending"
+type StatusKey = "approved" | "rejected" | "pending"
+
+export type StatusDatum = {
+  key: StatusKey
   label: string
   value: number
   amount: string
@@ -18,49 +20,120 @@ type StatusDatum = {
   color: string
 }
 
+type StatusSummary = {
+  // counts (optional – depends on your backend)
+  approved_count?: number
+  rejected_count?: number
+  pending_count?: number
+
+  // amounts (optional)
+  approved_amount?: number
+  rejected_amount?: number
+  pending_amount?: number
+
+  // totals (optional – can be derived)
+  total_count?: number
+  total_amount?: number
+}
+
 type Props = {
   title?: string
   totalTitle?: string
+
+  /** Provide totals OR provide summary that contains totals */
   totalCount?: number
   totalAmount?: string
+
+  /** If you already have full data array, you can pass it */
   data?: StatusDatum[]
+
+  /** OR pass summary and we will build the data array */
+  summary?: StatusSummary
+
   range?: RangeKey
   onRangeChange?: (v: RangeKey) => void
 }
 
-const DEFAULT_DATA: StatusDatum[] = [
-  {
-    key: "approved",
-    label: "Approved",
-    value: 8556,
-    amount: "₦3,300,000",
-    percentChip: "12%",
-    color: "#02A32D",
-  },
-  {
-    key: "rejected",
-    label: "Rejected",
-    value: 1556,
-    amount: "₦1,120,000",
-    percentChip: "08%",
-    color: "#F85E5E",
-  },
-  {
-    key: "pending",
-    label: "Pending",
-    value: 8556,
-    amount: "₦2,040,000",
-    percentChip: "10%",
-    color: "#F4BF13",
-  },
-]
+const COLORS: Record<StatusKey, string> = {
+  approved: "#02A32D",
+  rejected: "#F85E5E",
+  pending: "#F4BF13",
+}
+
+const LABELS: Record<StatusKey, string> = {
+  approved: "Approved",
+  rejected: "Rejected",
+  pending: "Pending",
+}
+
+function toNumber(v: any): number {
+  const n =
+    typeof v === "number" ? v : Number(String(v ?? "0").replace(/,/g, ""))
+  return Number.isFinite(n) ? n : 0
+}
+
+function formatNaira(v: number) {
+  return `₦${toNumber(v).toLocaleString("en-NG", {
+    maximumFractionDigits: 0,
+  })}`
+}
+
+function formatPct(value: number, total: number) {
+  if (!total) return "0%"
+  const pct = (value / total) * 100
+  return `${Math.round(pct)}%`
+}
+
+function buildFromSummary(summary?: StatusSummary): {
+  data: StatusDatum[]
+  totalCount: number
+  totalAmount: string
+} {
+  const approved = toNumber(summary?.approved_count)
+  const rejected = toNumber(summary?.rejected_count)
+  const pending = toNumber(summary?.pending_count)
+
+  const approvedAmt = toNumber(summary?.approved_amount)
+  const rejectedAmt = toNumber(summary?.rejected_amount)
+  const pendingAmt = toNumber(summary?.pending_amount)
+
+  const totalCount =
+    toNumber(summary?.total_count) || approved + rejected + pending
+
+  const totalAmountNum =
+    toNumber(summary?.total_amount) || approvedAmt + rejectedAmt + pendingAmt
+
+  const mk = (
+    key: StatusKey,
+    value: number,
+    amountNum: number
+  ): StatusDatum => ({
+    key,
+    label: LABELS[key],
+    value,
+    amount: formatNaira(amountNum),
+    percentChip: formatPct(value, totalCount),
+    color: COLORS[key],
+  })
+
+  return {
+    data: [
+      mk("approved", approved, approvedAmt),
+      mk("rejected", rejected, rejectedAmt),
+      mk("pending", pending, pendingAmt),
+    ],
+    totalCount,
+    totalAmount: formatNaira(totalAmountNum),
+  }
+}
 
 export function StatusComparisonCard({
   title = "Status Comparison",
   totalTitle = "Total Claims",
-  totalCount = 24_556,
-  totalAmount = "₦6,460,000",
-  data = DEFAULT_DATA,
+  totalCount: totalCountProp,
+  totalAmount: totalAmountProp,
+  data: dataProp,
+  summary,
   range: rangeProp,
   onRangeChange,
 }: Props) {
@@ -69,6 +142,18 @@ export function StatusComparisonCard({
 
   const range = rangeProp ?? rangeState
   const setRange = onRangeChange ?? setRangeState
+
+  // ✅ Build effective data (summary > data prop > fallback zeros)
+  const computed = React.useMemo(() => buildFromSummary(summary), [summary])
+
+  const effectiveData =
+    dataProp && dataProp.length > 0 ? dataProp : computed.data
+
+  const effectiveTotalCount =
+    typeof totalCountProp === "number" ? totalCountProp : computed.totalCount
+
+  const effectiveTotalAmount =
+    typeof totalAmountProp === "string" ? totalAmountProp : computed.totalAmount
 
   return (
     <div
@@ -115,12 +200,12 @@ export function StatusComparisonCard({
           )}
         >
           <StatusDonut
-            data={data}
+            data={effectiveData}
             totalTitle={totalTitle}
-            totalCount={totalCount}
-            totalAmount={totalAmount}
+            totalCount={effectiveTotalCount}
+            totalAmount={effectiveTotalAmount}
           />
-          <StatusLegend data={data} />
+          <StatusLegend data={effectiveData} />
         </div>
       )}
     </div>

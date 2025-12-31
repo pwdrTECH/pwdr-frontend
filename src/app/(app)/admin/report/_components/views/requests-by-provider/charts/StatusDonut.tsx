@@ -19,7 +19,6 @@ export function StatusDonut({ data }: Props) {
       color: d.color,
     }))
   }, [data])
-  console.log(chartData, "chartData")
   return (
     <div className="w-[240px] h-[240px] relative">
       <ResponsiveContainer width="100%" height="100%">

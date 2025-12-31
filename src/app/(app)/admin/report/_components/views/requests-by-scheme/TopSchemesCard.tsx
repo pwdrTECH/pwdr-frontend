@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
 import { Eye, EyeOff } from "lucide-react"
 import * as React from "react"
 import {
@@ -26,11 +25,12 @@ import {
 
 type Point = {
   m: string
-  tship: number
-  nhis: number
+  [scheme: string]: number | string
 }
 
 type SortKey = "__enrollees__" | "__cost__" | "__requests__"
+
+const COLORS = ["#1671D9", "#02A32D", "#F4BF13", "#F85E5E", "#7A5AF8"]
 
 function fmtInt(n: number) {
   return Number(n || 0).toLocaleString("en-NG")
@@ -38,33 +38,32 @@ function fmtInt(n: number) {
 
 function TooltipBox({
   month,
-  tship,
-  nhis,
+  values,
 }: {
   month: string
-  tship: number
-  nhis: number
+  values: { key: string; value: number; color: string }[]
 }) {
   return (
-    <div className="w-[170px] rounded-[10px] bg-[#212123] px-4 py-3 shadow-lg">
-      <div className="text-[14px] leading-[100%] text-[#AFAFAF]">{month}</div>
+    <div className="w-[200px] rounded-[10px] bg-[#212123] px-4 py-3 shadow-lg">
+      <div className="text-[14px] text-[#AFAFAF]">{month}</div>
 
       <div className="mt-3 flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-[#1671D9]" />
-          <div className="text-[14px] leading-[100%] text-[#8C8C8C]">TSHIP</div>
-        </div>
-        <div className="text-[22px] leading-[100%] font-semibold text-white">
-          {fmtInt(tship)}
-        </div>
-
-        <div className="flex items-center gap-2 pt-1">
-          <span className="h-3 w-3 rounded-full bg-[#02A32D]" />
-          <div className="text-[14px] leading-[100%] text-[#8C8C8C]">NHIS</div>
-        </div>
-        <div className="text-[22px] leading-[100%] font-semibold text-white">
-          {fmtInt(nhis)}
-        </div>
+        {values.map((v) => (
+          <div key={v.key}>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ background: v.color }}
+              />
+              <div className="text-[14px] text-[#8C8C8C]">
+                {v.key.toUpperCase()}
+              </div>
+            </div>
+            <div className="text-[20px] font-semibold text-white">
+              {fmtInt(v.value)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -82,16 +81,18 @@ export function TopSchemesCard({
   const [hidden, setHidden] = React.useState(false)
   const [sortBy, setSortBy] = React.useState<SortKey>("__enrollees__")
 
+  // derive scheme keys dynamically (exclude "m")
+  const schemeKeys = React.useMemo(() => {
+    if (!data.length) return []
+    return Object.keys(data[0]).filter((k) => k !== "m")
+  }, [data])
+
   return (
-    <div
-      className={cn(
-        "w-full bg-white border border-[#EAECF0] rounded-[16px] p-4"
-      )}
-    >
+    <div className="w-full bg-white border border-[#EAECF0] rounded-[16px] p-4">
       {/* header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <div className="text-[18px] leading-[100%] font-medium text-[#35404A]">
+          <div className="text-[18px] font-medium text-[#35404A]">
             Top Schemes
           </div>
 
@@ -102,13 +103,7 @@ export function TopSchemesCard({
               value={sortBy}
               onValueChange={(v) => setSortBy(v as SortKey)}
             >
-              <SelectTrigger
-                className={cn(
-                  "h-[40px] w-[160px] rounded-[12px] text-[14px] text-[#667085]",
-                  "border border-[#EAECF0] bg-[#F8F8F8]",
-                  "shadow-[0px_1px_2px_0px_#1018280D]"
-                )}
-              >
+              <SelectTrigger className="h-[40px] w-[160px] rounded-[12px] border border-[#EAECF0] bg-[#F8F8F8]">
                 <SelectValue placeholder="No of Enrollees" />
               </SelectTrigger>
               <SelectContent>
@@ -122,33 +117,24 @@ export function TopSchemesCard({
 
         <div className="flex items-center gap-6">
           <StatusRangePills value={range} onChange={onRangeChange} />
-
           <button
             type="button"
-            aria-label={hidden ? "Show" : "Hide"}
             onClick={() => setHidden((v) => !v)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#667085] hover:bg-[#F2F4F7]"
           >
-            {hidden ? (
-              <Eye className="h-5 w-5" />
-            ) : (
-              <EyeOff className="h-5 w-5" />
-            )}
+            {hidden ? <Eye /> : <EyeOff />}
           </button>
         </div>
       </div>
 
       {hidden ? (
-        <div className="h-[280px] flex items-center justify-center text-[#7A7A7A] text-[14px]">
+        <div className="h-[280px] flex items-center justify-center text-[#7A7A7A]">
           Hidden
         </div>
       ) : (
-        <div className="mt-6 h-[260px] w-full">
+        <div className="mt-6 h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={data}
-              margin={{ top: 8, right: 14, left: 14, bottom: 6 }}
-            >
+            <LineChart data={data}>
               <CartesianGrid
                 vertical={false}
                 stroke="#D0D5DD"
@@ -159,13 +145,12 @@ export function TopSchemesCard({
                 dataKey="m"
                 axisLine={false}
                 tickLine={false}
-                tickMargin={14}
                 tick={{ fontSize: 14, fill: "#979797" }}
               />
+
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tickMargin={14}
                 tick={{ fontSize: 14, fill: "#979797" }}
                 tickFormatter={(v) =>
                   v === 0 ? "0" : `${Math.round(Number(v) / 1000)}k`
@@ -173,49 +158,36 @@ export function TopSchemesCard({
               />
 
               <Tooltip
-                cursor={{ strokeDasharray: "6 6", stroke: "#D0D5DD" }}
                 content={(p: any) => {
                   if (!p?.active || !p?.payload?.length) return null
-                  const row = p.payload[0]?.payload as Point
-                  return (
-                    <TooltipBox
-                      month={String(p.label ?? row.m ?? "")}
-                      tship={row.tship ?? 0}
-                      nhis={row.nhis ?? 0}
-                    />
-                  )
+                  const row = p.payload[0].payload as Point
+
+                  const values = schemeKeys.map((k, i) => ({
+                    key: k,
+                    value: Number(row[k] ?? 0),
+                    color: COLORS[i % COLORS.length],
+                  }))
+
+                  return <TooltipBox month={String(row.m)} values={values} />
                 }}
               />
 
-              {/* blue */}
-              <Line
-                type="linear"
-                dataKey="tship"
-                stroke="#1671D9"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{
-                  r: 5,
-                  strokeWidth: 3,
-                  stroke: "#1671D9",
-                  fill: "#FFFFFF",
-                }}
-              />
-
-              {/* green */}
-              <Line
-                type="linear"
-                dataKey="nhis"
-                stroke="#02A32D"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{
-                  r: 5,
-                  strokeWidth: 3,
-                  stroke: "#02A32D",
-                  fill: "#FFFFFF",
-                }}
-              />
+              {schemeKeys.map((k, i) => (
+                <Line
+                  key={k}
+                  type="linear"
+                  dataKey={k}
+                  stroke={COLORS[i % COLORS.length]}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{
+                    r: 5,
+                    strokeWidth: 3,
+                    stroke: COLORS[i % COLORS.length],
+                    fill: "#FFFFFF",
+                  }}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>

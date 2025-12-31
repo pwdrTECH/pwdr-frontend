@@ -1,3 +1,10 @@
+/* ========================================================================
+   FILE: app/(dashboard)/billing/page.tsx  (your BillingPage)
+   - Fixes:
+     1) store invoiceNumber from API (not BILL-1)
+     2) Mark As Paid: loader + toast + don't close dialog on error
+======================================================================== */
+
 "use client"
 
 import { DateRangePicker } from "@/components/filters/date-range"
@@ -15,11 +22,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useBilling, useSetInvoicePaid } from "@/lib/api/billing"
 import { cn } from "@/lib/utils"
 import { useMemo, useState } from "react"
 import { BulkClaimAnalysisSheet } from "./_components/BulkClaimAnalysis"
 import { BillDetailSheet } from "./_components/detail"
 import { UploadBulkClaimSheet } from "./_components/UploadBulkClaimSheet"
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog"
+import { toast } from "sonner"
+
+/** ============================
+ *  Types (UI)
+ ============================ */
 
 export type BillStatus = "all" | "paid" | "unpaid"
 
@@ -31,57 +45,43 @@ export interface BillingRow {
   claimsCount: number
   totalCost: number
   status: BillStatus
+  invoiceNumber: string
 }
 
-// TODO: replace with real API
-const MOCK_BILLS: BillingRow[] = [
-  {
-    id: "1",
-    dueDate: "12 Dec 2024",
-    billId: "CEG-28YN-2H",
-    provider: "Reliance HMO",
-    claimsCount: 4871,
-    totalCost: 5_000_000,
-    status: "unpaid",
-  },
-  {
-    id: "2",
-    dueDate: "12 Dec 2024",
-    billId: "CEG-28YN-2H",
-    provider: "Ally Healthcare",
-    claimsCount: 2572,
-    totalCost: 2_500_000,
-    status: "paid",
-  },
-  {
-    id: "3",
-    dueDate: "12 Dec 2024",
-    billId: "CEG-28YN-2H",
-    provider: "Reliance HMO",
-    claimsCount: 4871,
-    totalCost: 5_000_000,
-    status: "unpaid",
-  },
-  {
-    id: "4",
-    dueDate: "12 Dec 2024",
-    billId: "CEG-28YN-2H",
-    provider: "Ally Healthcare",
-    claimsCount: 2572,
-    totalCost: 2_500_000,
-    status: "paid",
-  },
-]
+/** ============================
+ *  Helpers
+ ============================ */
 
 const formatNaira = (v: number) =>
-  `₦${v.toLocaleString("en-NG", {
+  `₦${Number(v || 0).toLocaleString("en-NG", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })}`
-const parseDate = (value: string): Date | null => {
+
+function formatDateLabel(value?: string | null) {
+  if (!value) return "—"
   const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
 }
+
+function parsePriceRange(price: string): {
+  min_cost: string
+  max_cost: string
+} {
+  if (!price || price === "all") return { min_cost: "", max_cost: "" }
+  if (price.endsWith("+"))
+    return { min_cost: price.replace("+", ""), max_cost: "" }
+  const [min, max] = price.split("-")
+  return { min_cost: min ?? "", max_cost: max ?? "" }
+}
+
+const PAGE_SIZE = 10
+
 export default function BillingPage() {
   const [search, setSearch] = useState("")
   const [provider, setProvider] = useState<string>("all")
@@ -90,58 +90,75 @@ export default function BillingPage() {
   const [endDate, setEndDate] = useState<string | null>(null)
   const [status, setStatus] = useState<"all" | BillStatus>("all")
   const [page, setPage] = useState(1)
+
+  const [payDialogOpenFor, setPayDialogOpenFor] = useState<string | null>(null)
+  const [payingRowId, setPayingRowId] = useState<string | null>(null)
   const [selectedBill, setSelectedBill] = useState<BillingRow | null>(null)
   const [detailVariant, setDetailVariant] = useState<"single" | "multi">(
     "single"
   )
+
+  const setPaid = useSetInvoicePaid()
   const [showBulkSheet, setShowBulkSheet] = useState(false)
   const [showResultSheet, setShowResultSheet] = useState(false)
 
   const pageSize = 10
+  const controlsId = "billing-table-body"
+  const priceRange = useMemo(() => parsePriceRange(price), [price])
 
-  const billsDue = 21_400_000
-  const billsPaid = 4_600_000
-  const totalBills = 23
-  const totalCost = 26_000_000
+  const billingFilters = useMemo(
+    () => ({
+      page,
+      limit: PAGE_SIZE,
+      start_date: startDate ?? "",
+      end_date: endDate ?? "",
+      provider_id: provider === "all" ? "" : provider,
+      min_cost: priceRange.min_cost,
+      max_cost: priceRange.max_cost,
+      status: status === "all" ? "" : status,
+    }),
+    [page, startDate, endDate, provider, priceRange, status]
+  )
 
-  const filteredBills = useMemo(() => {
+  const billingQuery = useBilling(billingFilters)
+
+  const summary = billingQuery.data?.data?.summary
+  const pagination = billingQuery.data?.data?.pagination
+  const apiRows = billingQuery.data?.data?.line_listing ?? []
+
+  const rows: BillingRow[] = useMemo(() => {
     const q = search.trim().toLowerCase()
 
-    return MOCK_BILLS.filter((b) => {
-      const matchesSearch =
-        !q ||
-        b.billId.toLowerCase().includes(q) ||
-        b.provider.toLowerCase().includes(q)
+    const mapped = apiRows.map((b, index) => {
+      const mappedStatus: BillStatus = b.status === "paid" ? "paid" : "unpaid"
+      const invoiceNumber = String(b.invoice_number ?? "").trim()
+      const displayBillId = invoiceNumber || `BILL-${index + 1}`
 
-      const matchesProvider = provider === "all" || b.provider === provider
-
-      const matchesStatus = status === "all" || b.status === status
-
-      // date range
-      let matchesDate = true
-      if (startDate || endDate) {
-        const billDate = parseDate(b.dueDate)
-        if (billDate) {
-          if (startDate) {
-            const s = parseDate(startDate)
-            if (s && billDate < s) matchesDate = false
-          }
-          if (endDate) {
-            const e = parseDate(endDate)
-            if (e) {
-              const eod = new Date(e)
-              eod.setHours(23, 59, 59, 999)
-              if (billDate > eod) matchesDate = false
-            }
-          }
-        }
+      return {
+        id: `${b.provider_name ?? "provider"}-${b.due_date ?? "date"}-${index}`,
+        dueDate: formatDateLabel(b.due_date),
+        billId: displayBillId,
+        provider: String(b.provider_name ?? ""),
+        claimsCount: Number(b.no_of_claims || 0),
+        totalCost: Number(b.total_cost || 0),
+        status: mappedStatus,
+        invoiceNumber,
       }
-
-      return matchesSearch && matchesProvider && matchesStatus && matchesDate
     })
-  }, [search, provider, status, startDate, endDate])
-  const paged = filteredBills.slice((page - 1) * pageSize, page * pageSize)
-  const controlsId = "billing-table-body"
+
+    if (!q) return mapped
+
+    return mapped.filter(
+      (r) =>
+        r.billId.toLowerCase().includes(q) ||
+        r.provider.toLowerCase().includes(q)
+    )
+  }, [apiRows, search])
+
+  const totalItems =
+    typeof pagination?.total === "number" ? pagination.total : rows.length
+  const effectivePageSize =
+    typeof pagination?.per_page === "number" ? pagination.per_page : pageSize
 
   return (
     <div className="flex flex-col gap-6">
@@ -150,10 +167,7 @@ export default function BillingPage() {
         <div />
 
         <div className="w-full max-w-[575px] bg-white h-18.5 flex justify-between rounded-[12px] border pt-3.5 pb-4 pl-3.5 pr-5 items-center">
-          <div
-            className="h-11 w-full flex flex-col
-          "
-          >
+          <div className="h-11 w-full flex flex-col">
             <span className="text-sm font-hnd font-medium font-base tracking-normal text-[#101928]">
               Analyze Bulk Claim
             </span>
@@ -172,14 +186,20 @@ export default function BillingPage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
         <SummaryCard
           label="Bills due"
-          value={formatNaira(billsDue)}
+          value={formatNaira(summary?.total_bills_due ?? 0)}
           valueClass="text-[#FF6058]"
         />
-        <SummaryCard label="Bills paid" value={formatNaira(billsPaid)} />
-        <SummaryCard label="Total number of bills" value={String(totalBills)} />
+        <SummaryCard
+          label="Bills paid"
+          value={formatNaira(summary?.total_bills_paid ?? 0)}
+        />
+        <SummaryCard
+          label="Total number of bills"
+          value={String(summary?.number_of_bills ?? 0)}
+        />
         <SummaryCard
           label="Total amount of bills"
-          value={formatNaira(totalCost)}
+          value={formatNaira(summary?.total_cost_of_bills ?? 0)}
         />
       </div>
 
@@ -188,15 +208,13 @@ export default function BillingPage() {
         <CardHeader className="border-b border-[#EAECF0] pb-4">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              {/* Search */}
-
               <SearchField
                 onChange={(value) => {
                   setSearch(value)
                   setPage(1)
                 }}
               />
-              {/* Filters */}
+
               <div className="flex flex-wrap items-center gap-4 justify-end">
                 <FilterSelect
                   value={provider}
@@ -207,10 +225,10 @@ export default function BillingPage() {
                   placeholder="All Providers"
                   options={[
                     { value: "all", label: "All Providers" },
-                    { value: "Reliance HMO", label: "Reliance HMO" },
-                    { value: "Ally Healthcare", label: "Ally Healthcare" },
+                    { value: "Primus Hospital", label: "Primus Hospital" },
                   ]}
                 />
+
                 <FilterSelect
                   value={price}
                   onChange={(v) => {
@@ -228,6 +246,7 @@ export default function BillingPage() {
                     { value: "5000000+", label: "₦5,000,000+" },
                   ]}
                 />
+
                 <FilterSelect
                   value={status}
                   onChange={(v) => {
@@ -236,14 +255,12 @@ export default function BillingPage() {
                   }}
                   placeholder="Any status"
                   options={[
-                    { value: "all", label: "Any Prices" },
+                    { value: "all", label: "Any Status" },
                     { value: "unpaid", label: "Unpaid" },
-                    {
-                      value: "paid",
-                      label: "paid",
-                    },
+                    { value: "paid", label: "Paid" },
                   ]}
                 />
+
                 <DateRangePicker
                   onChange={(start, end) => {
                     setStartDate(start)
@@ -257,7 +274,6 @@ export default function BillingPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          {/* Table */}
           <TableContainer>
             <Table className="min-w-[900px]">
               <TableHeader>
@@ -271,76 +287,165 @@ export default function BillingPage() {
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody id={controlsId}>
-                {paged.map((row, idx) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.dueDate}</TableCell>
-                    <TableCell>{row.billId}</TableCell>
-                    <TableCell>{row.provider}</TableCell>
-                    <TableCell>{row.claimsCount.toLocaleString()}</TableCell>
-                    <TableCell>{formatNaira(row.totalCost)}</TableCell>
-                    <TableCell>
-                      {row.status === "paid" ? (
-                        <Badge className="w-fit h-[21px] rounded-[6px] bg-[#1671D91A] text-[#1671D9] text-[12px]/[18px] font-bold tracking-normal border border-[#0000001A] text-[11px] shadow-[0px_1px_2px_0px_#1018280D] p-1.5">
-                          Paid
-                        </Badge>
-                      ) : (
-                        <Badge className="w-fit h-[21px] rounded-[6px] bg-transparent text-[#979797] text-[12px]/[18px] font-bold tracking-normal border border-[#979797] text-[11px] shadow-[0px_1px_2px_0px_#1018280D] p-1.5">
-                          Unpaid
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right space-x-4">
-                      <button
-                        type="button"
-                        className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
-                        onClick={() => {
-                          setSelectedBill(row)
-                          setDetailVariant(idx % 2 === 0 ? "single" : "multi")
-                        }}
-                      >
-                        Review
-                      </button>
-                      {row.status === "unpaid" ? (
-                        <button
-                          type="button"
-                          className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
-                        >
-                          Mark As Paid
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
-                        >
-                          View
-                        </button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
 
-                {paged.length === 0 && (
+              <TableBody id={controlsId}>
+                {billingQuery.isLoading && (
                   <TableRow>
                     <TableCell
                       colSpan={7}
                       className="py-12 text-center text-sm text-[#9CA3AF]"
                     >
-                      No bills found for the selected filters.
+                      Loading bills...
                     </TableCell>
                   </TableRow>
                 )}
+
+                {billingQuery.isError && !billingQuery.isLoading && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-12 text-center text-sm text-[#B42318]"
+                    >
+                      {(billingQuery.error as Error)?.message ||
+                        "Failed to load billing"}
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!billingQuery.isLoading &&
+                  !billingQuery.isError &&
+                  rows.map((row, idx) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{row.dueDate}</TableCell>
+                      <TableCell>{row.billId}</TableCell>
+                      <TableCell>{row.provider}</TableCell>
+                      <TableCell>{row.claimsCount.toLocaleString()}</TableCell>
+                      <TableCell>{formatNaira(row.totalCost)}</TableCell>
+
+                      <TableCell>
+                        {row.status === "paid" ? (
+                          <Badge className="w-fit h-[21px] rounded-[6px] bg-[#1671D91A] text-[#1671D9] text-[12px]/[18px] font-bold tracking-normal border border-[#0000001A] shadow-[0px_1px_2px_0px_#1018280D] p-1.5">
+                            Paid
+                          </Badge>
+                        ) : (
+                          <Badge className="w-fit h-[21px] rounded-[6px] bg-transparent text-[#979797] text-[12px]/[18px] font-bold tracking-normal border border-[#979797] shadow-[0px_1px_2px_0px_#1018280D] p-1.5">
+                            Unpaid
+                          </Badge>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="text-right space-x-4">
+                        <button
+                          type="button"
+                          className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
+                          onClick={() => {
+                            setSelectedBill(row)
+                            setDetailVariant(idx % 2 === 0 ? "single" : "multi")
+                          }}
+                        >
+                          Review
+                        </button>
+                        {row.status === "unpaid" ? (
+                          <ConfirmDialog
+                            variant="info"
+                            title="Mark As Paid?"
+                            description="Are you sure you want to mark this invoice as paid?"
+                            confirmText={
+                              payingRowId === row.id
+                                ? "Processing..."
+                                : "Yes, proceed"
+                            }
+                            cancelText="Cancel"
+                            open={payDialogOpenFor === row.id}
+                            onOpenChange={(open) => {
+                              if (payingRowId === row.id) return
+                              setPayDialogOpenFor(open ? row.id : null)
+                            }}
+                            onConfirm={async () => {
+                              const invoiceNumber = row.invoiceNumber
+
+                              if (!invoiceNumber) {
+                                toast.error(
+                                  "Missing invoice number for this bill"
+                                )
+                                return
+                              }
+
+                              setPayingRowId(row.id)
+
+                              const toastId = `mark-paid-${invoiceNumber}`
+                              toast.loading("Marking invoice as paid...", {
+                                id: toastId,
+                              })
+
+                              try {
+                                const res = await setPaid.mutateAsync(
+                                  invoiceNumber
+                                )
+
+                                toast.success(
+                                  res?.message ||
+                                    "Invoice marked as paid successfully",
+                                  { id: toastId }
+                                )
+
+                                setPayDialogOpenFor(null)
+                              } catch (e: any) {
+                                toast.error(
+                                  e?.message ||
+                                    "Failed to mark invoice as paid",
+                                  {
+                                    id: toastId,
+                                  }
+                                )
+                              } finally {
+                                setPayingRowId(null)
+                              }
+                            }}
+                            trigger={
+                              <button
+                                type="button"
+                                className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
+                                onClick={() => setPayDialogOpenFor(row.id)}
+                              >
+                                Mark As Paid
+                              </button>
+                            }
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-[#1671D9] text-sm font-bold font-hnd tracking-normal cursor-pointer hover:underline"
+                          >
+                            View
+                          </button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                {!billingQuery.isLoading &&
+                  !billingQuery.isError &&
+                  rows.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-12 text-center text-sm text-[#9CA3AF]"
+                      >
+                        No bills found for the selected filters.
+                      </TableCell>
+                    </TableRow>
+                  )}
               </TableBody>
             </Table>
           </TableContainer>
 
-          {/* Pagination */}
           <div className="border-t border-[#EAECF0]">
             <TablePagination
-              page={page}
+              page={pagination?.current_page ?? page}
               onPageChange={setPage}
-              totalItems={filteredBills.length}
-              pageSize={pageSize}
+              totalItems={totalItems}
+              pageSize={effectivePageSize}
               boundaryCount={1}
               siblingCount={1}
               controlsId={controlsId}
@@ -349,7 +454,6 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Detail sheet */}
       {selectedBill && (
         <BillDetailSheet
           open={!!selectedBill}
@@ -361,7 +465,6 @@ export default function BillingPage() {
         />
       )}
 
-      {/* Bulk claim analysis */}
       <BulkClaimAnalysisSheet
         open={showBulkSheet}
         onOpenChange={setShowBulkSheet}

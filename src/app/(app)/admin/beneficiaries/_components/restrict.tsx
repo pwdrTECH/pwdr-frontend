@@ -1,6 +1,6 @@
-import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
-import { PadlockIcon } from "@/components/svgs";
-import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog"
+import { PadlockIcon } from "@/components/svgs"
+import { Button } from "@/components/ui/button"
 
 const RestrictProfile = () => {
   return (
@@ -11,7 +11,7 @@ const RestrictProfile = () => {
       confirmText="Yes, delete"
       cancelText="Cancel"
       onConfirm={async () => {
-        console.log("restriction confirmed");
+        console.log("restriction confirmed")
       }}
       trigger={
         <Button
@@ -22,7 +22,7 @@ const RestrictProfile = () => {
         </Button>
       }
     />
-  );
-};
+  )
+}
 
-export default RestrictProfile;
+export default RestrictProfile

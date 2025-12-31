@@ -3,18 +3,69 @@
 import * as React from "react"
 import { useReportQuery } from "../../reports/ReportQueryContext"
 import { useReportExport } from "../../reports/ReportExportContext"
+
 import { OverdueFiltersRow, type OverdueFilters } from "./OverdueFiltersRow"
 import { OverdueStatsRow } from "./OverdueStatsRow"
 import { OverdueTable } from "./OverdueTable"
-import { MOCK_OVERDUE_ROWS, type OverdueRow } from "./mock"
+import type { OverdueRow } from "./mock"
+
+import { useOverdueReport } from "@/lib/api/reports"
+
+const PAGE_SIZE = 20
 
 function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
+}
+function toNumber(x: unknown) {
+  if (typeof x === "number") return Number.isFinite(x) ? x : 0
+  const n = Number(String(x ?? "").replace(/,/g, ""))
+  return Number.isFinite(n) ? n : 0
+}
+
+function parseCostRange(costRange: string) {
+  if (!costRange || costRange === "__all__")
+    return { min_cost: "", max_cost: "" }
+  if (costRange === "0-100k") return { min_cost: "0", max_cost: "100000" }
+  if (costRange === "100k-500k")
+    return { min_cost: "100001", max_cost: "500000" }
+  if (costRange === "500k-1m")
+    return { min_cost: "500001", max_cost: "1000000" }
+  if (costRange === "1m+") return { min_cost: "1000001", max_cost: "" }
+  return { min_cost: "", max_cost: "" }
+}
+
+function mapApiToOverdueRow(
+  item: Record<string, any>,
+  index: number
+): OverdueRow {
+  return {
+    id: String(item.id ?? item.request_id ?? `overdue-${index}`),
+    requestId: String(item.request_id ?? item.requestId ?? "—"),
+    enrolleeName: String(item.enrollee_name ?? item.enrolleeName ?? "—"),
+    provider: String(item.provider_name ?? item.provider ?? "—"),
+    schemeLabel: String(item.scheme ?? item.schemeLabel ?? "—"),
+    submittedDate: String(item.submitted_date ?? item.submittedDate ?? "—"),
+    submittedTime: String(item.submitted_time ?? item.submittedTime ?? "—"),
+    daysOverdue: toNumber(item.days_overdue ?? item.daysOverdue ?? 0),
+    totalCost: toNumber(item.total_cost ?? item.totalCost ?? 0),
+
+    // keep for exports/filters if present later
+    service: String(item.service ?? ""),
+    location: String(item.location ?? ""),
+    scheme: String(item.scheme ?? ""),
+    plan: String(item.plan ?? ""),
+    costRange: String(item.cost_range ?? ""),
+  } as OverdueRow
 }
 
 export function OverdueReportView() {
   const { q } = useReportQuery()
   const { setConfig } = useReportExport()
+
+  const [page, setPage] = React.useState(1)
+
+  const [startDate] = React.useState<string>("")
+  const [endDate] = React.useState<string>("")
 
   const [filters, setFilters] = React.useState<OverdueFilters>({
     service: "__all__",
@@ -24,48 +75,67 @@ export function OverdueReportView() {
     costRange: "__all__",
   })
 
-  const rows = React.useMemo(() => {
-    let filtered = MOCK_OVERDUE_ROWS as OverdueRow[]
+  const cost = React.useMemo(
+    () => parseCostRange(filters.costRange),
+    [filters.costRange]
+  )
 
-    // search: allow requestId, enrollee, provider
+  const apiFilters = React.useMemo(
+    () => ({
+      page,
+      limit: PAGE_SIZE,
+      start_date: startDate,
+      end_date: endDate,
+      min_cost: cost.min_cost,
+      max_cost: cost.max_cost,
+
+      service: filters.service !== "__all__" ? filters.service : "",
+      location: filters.location !== "__all__" ? filters.location : "",
+      scheme: filters.scheme !== "__all__" ? filters.scheme : "",
+      plan: filters.plan !== "__all__" ? filters.plan : "",
+    }),
+    [page, startDate, endDate, cost.min_cost, cost.max_cost, filters]
+  )
+
+  const overdueQuery = useOverdueReport(apiFilters)
+
+  const summary = overdueQuery.data?.data?.summary
+  const pagination = overdueQuery.data?.data?.pagination
+
+  const apiList = React.useMemo(() => {
+    const list = overdueQuery.data?.data?.line_listing
+    return Array.isArray(list) ? list : []
+  }, [overdueQuery.data?.data?.line_listing])
+
+  const rows = React.useMemo<OverdueRow[]>(() => {
+    let mapped = apiList.map((it, i) => mapApiToOverdueRow(it, i))
+
+    // local search (requestId, enrollee, provider)
     const s = q.trim().toLowerCase()
     if (s) {
-      filtered = filtered.filter((r) => {
-        return (
-          r.requestId.toLowerCase().includes(s) ||
-          r.enrolleeName.toLowerCase().includes(s) ||
-          r.provider.toLowerCase().includes(s)
-        )
-      })
-    }
-
-    if (filters.service !== "__all__") {
-      filtered = filtered.filter((r) => (r.service ?? "") === filters.service)
-    }
-    if (filters.location !== "__all__") {
-      filtered = filtered.filter((r) => (r.location ?? "") === filters.location)
-    }
-    if (filters.scheme !== "__all__") {
-      filtered = filtered.filter((r) => (r.scheme ?? "") === filters.scheme)
-    }
-    if (filters.plan !== "__all__") {
-      filtered = filtered.filter((r) => (r.plan ?? "") === filters.plan)
-    }
-    if (filters.costRange !== "__all__") {
-      filtered = filtered.filter(
-        (r) => (r.costRange ?? "") === filters.costRange
+      mapped = mapped.filter(
+        (r) =>
+          String(r.requestId ?? "")
+            .toLowerCase()
+            .includes(s) ||
+          String(r.enrolleeName ?? "")
+            .toLowerCase()
+            .includes(s) ||
+          String(r.provider ?? "")
+            .toLowerCase()
+            .includes(s)
       )
     }
 
-    return filtered
-  }, [q, filters])
+    return mapped
+  }, [apiList, q])
 
-  // EXPORT CONFIG (exports filtered rows)
+  // EXPORT CONFIG (exports current page result)
   React.useEffect(() => {
     setConfig({
       fileName: "Overdue Report",
       sheetName: "Overdue Report",
-      format: "xlsx", // or "csv"
+      format: "xlsx",
       columns: [
         { header: "Request ID", value: (r: OverdueRow) => r.requestId },
         { header: "Enrollee", value: (r: OverdueRow) => r.enrolleeName },
@@ -78,10 +148,6 @@ export function OverdueReportView() {
           header: "Total Cost",
           value: (r: OverdueRow) => fmtNaira(r.totalCost),
         },
-        { header: "Service", value: (r: OverdueRow) => r.service ?? "" },
-        { header: "Location", value: (r: OverdueRow) => r.location ?? "" },
-        { header: "Plan", value: (r: OverdueRow) => r.plan ?? "" },
-        { header: "Cost Range", value: (r: OverdueRow) => r.costRange ?? "" },
       ],
       rows: () => rows,
     })
@@ -91,9 +157,24 @@ export function OverdueReportView() {
 
   return (
     <div className="w-full">
-      <OverdueFiltersRow value={filters} onChange={setFilters} />
-      <OverdueStatsRow rows={rows} />
-      <OverdueTable rows={rows} />
+      <OverdueFiltersRow
+        value={filters}
+        onChange={(next) => {
+          setFilters(next)
+          setPage(1)
+        }}
+      />
+
+      {/* if you want, update stats to accept summary like SchemeStatsRow */}
+      <OverdueStatsRow rows={rows as any} summary={summary as any} />
+
+      <OverdueTable
+        rows={rows}
+        page={pagination?.current_page ?? page}
+        onPageChange={setPage}
+        totalItems={pagination?.total ?? rows.length}
+        pageSize={pagination?.per_page ?? PAGE_SIZE}
+      />
     </div>
   )
 }

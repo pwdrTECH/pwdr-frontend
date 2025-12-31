@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import TablePagination from "@/components/table/pagination"
 import {
   Table,
@@ -17,24 +16,23 @@ function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
 }
 
-export function OverdueTable({ rows }: { rows: OverdueRow[] }) {
-  const [page, setPage] = React.useState(1)
-  const [pageSize] = React.useState(10)
-
-  const totalItems = rows?.length ?? 0
-  const start = (page - 1) * pageSize
-  const slice = rows.slice(start, start + pageSize)
-
+export function OverdueTable({
+  rows,
+  page,
+  onPageChange,
+  totalItems,
+  pageSize,
+}: {
+  rows: OverdueRow[]
+  page: number
+  onPageChange: (page: number) => void
+  totalItems: number
+  pageSize: number
+}) {
   const controlsId = "report-overdue-table"
-
-  React.useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-    if (page > totalPages) setPage(totalPages)
-  }, [page, pageSize, totalItems])
 
   return (
     <div className="px-6 pt-4">
-      {/* date range row like screenshot */}
       <div className="text-[12px]/[18px] text-[#667085]">
         <span className="mr-6">
           From: <span className="text-[#344054]">May, 2025</span>
@@ -62,7 +60,7 @@ export function OverdueTable({ rows }: { rows: OverdueRow[] }) {
             </TableHeader>
 
             <TableBody id={controlsId}>
-              {slice.map((r) => (
+              {rows.map((r) => (
                 <TableRow key={r.id} className="border-t border-[#EEF0F5]">
                   <TableCell className="pl-6 text-[#344054]">
                     {r.requestId}
@@ -75,7 +73,6 @@ export function OverdueTable({ rows }: { rows: OverdueRow[] }) {
                     {r.schemeLabel}
                   </TableCell>
 
-                  {/* two-line date/time like screenshot */}
                   <TableCell className="text-[#101828]">
                     <div className="flex flex-col">
                       <span>{r.submittedDate}</span>
@@ -93,7 +90,7 @@ export function OverdueTable({ rows }: { rows: OverdueRow[] }) {
                 </TableRow>
               ))}
 
-              {slice.length === 0 && (
+              {rows.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={7}
@@ -109,7 +106,7 @@ export function OverdueTable({ rows }: { rows: OverdueRow[] }) {
 
         <TablePagination
           page={page}
-          onPageChange={setPage}
+          onPageChange={onPageChange}
           totalItems={totalItems}
           pageSize={pageSize}
           boundaryCount={1}

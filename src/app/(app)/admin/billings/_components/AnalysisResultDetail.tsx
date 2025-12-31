@@ -1,14 +1,8 @@
 "use client"
 
 import { CustomSheet } from "@/components/overlays/SideDialog"
-import {
-  ArrowRight,
-  CopyIcon,
-  MagicPenIcon,
-  WarningIcon,
-} from "@/components/svgs"
+import { CopyIcon, MagicPenIcon, WarningIcon } from "@/components/svgs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
@@ -137,7 +131,7 @@ const ITEMS: TreatmentItem[] = [
   },
 ]
 
-export function ResultAnalysisDetailSheet({ row, open, onOpenChange }: Props) {
+export function ResultAnalysisDetailSheet({ open, onOpenChange }: Props) {
   const [openInsightFor, setOpenInsightFor] = React.useState<string | null>(
     null
   )

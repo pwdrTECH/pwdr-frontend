@@ -27,17 +27,67 @@ export type DiagnosisRow = {
   plan?: string
 }
 
+type Props = {
+  rows: DiagnosisRow[]
+
+  /** server pagination (optional) */
+  page?: number
+  onPageChange?: (page: number) => void
+  totalItems?: number
+  pageSize?: number
+
+  /** optional UI state */
+  loading?: boolean
+  error?: string
+
+  /** optional date labels for the "From/To" line */
+  fromLabel?: string
+  toLabel?: string
+}
+
 function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
 }
 
-export function UtilizationDiagnosisTable({ rows }: { rows: DiagnosisRow[] }) {
-  const [page, setPage] = React.useState(1)
-  const [pageSize] = React.useState(10)
+export function UtilizationDiagnosisTable({
+  rows,
+  page: pageProp,
+  onPageChange,
+  totalItems: totalItemsProp,
+  pageSize: pageSizeProp,
+  loading,
+  error,
+  fromLabel = "—",
+  toLabel = "—",
+}: Props) {
+  const isServer =
+    typeof pageProp === "number" && typeof onPageChange === "function"
 
-  const totalItems = rows?.length ?? 0
-  const start = (page - 1) * pageSize
-  const slice = rows.slice(start, start + pageSize)
+  // ✅ local fallback pagination (only when parent doesn't provide server props)
+  const [pageState, setPageState] = React.useState(1)
+  const [pageSizeState] = React.useState(10)
+
+  const page = isServer ? (pageProp as number) : pageState
+  const setPage = isServer
+    ? (onPageChange as (p: number) => void)
+    : setPageState
+  const pageSize = isServer ? pageSizeProp ?? 20 : pageSizeState
+
+  const totalItems = totalItemsProp ?? rows.length
+
+  // ✅ slice only in local mode; server mode expects rows already paged
+  const slice = React.useMemo(() => {
+    if (isServer) return rows
+    const start = (page - 1) * pageSize
+    return rows.slice(start, start + pageSize)
+  }, [rows, isServer, page, pageSize])
+
+  // ✅ prevent blank page when filters reduce local rows
+  React.useEffect(() => {
+    if (isServer) return
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+    if (page > totalPages) setPageState(1)
+  }, [isServer, totalItems, pageSize, page])
 
   const controlsId = "report-utilization-diagnosis-table-body"
 
@@ -45,10 +95,10 @@ export function UtilizationDiagnosisTable({ rows }: { rows: DiagnosisRow[] }) {
     <div className="px-6 pt-4">
       <div className="text-[12px]/[18px] text-[#667085]">
         <span className="mr-4">
-          From: <span className="text-[#344054]">May, 2025</span>
+          From: <span className="text-[#344054]">{fromLabel}</span>
         </span>
         <span>
-          To: <span className="text-[#344054]">Sep, 2025</span>
+          To: <span className="text-[#344054]">{toLabel}</span>
         </span>
       </div>
 
@@ -66,25 +116,51 @@ export function UtilizationDiagnosisTable({ rows }: { rows: DiagnosisRow[] }) {
             </TableHeader>
 
             <TableBody id={controlsId}>
-              {slice.map((r) => (
-                <TableRow key={r.id} className="border-t border-[#EEF0F5]">
-                  <TableCell className="pl-6 text-[#475467]">
-                    {r.diagnosis}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">{r.provider}</TableCell>
-                  <TableCell className="text-[#475467]">
-                    {Number(r.timesDiagnosed ?? 0).toLocaleString("en-NG")}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">
-                    {Number(r.enrolleeCount ?? 0).toLocaleString("en-NG")}
-                  </TableCell>
-                  <TableCell className="text-right text-[#475467] pr-6">
-                    {fmtNaira(r.cost)}
+              {loading && slice.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-12 text-center text-sm text-gray-500"
+                  >
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
 
-              {slice.length === 0 && (
+              {!loading && error && slice.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-12 text-center text-sm text-red-600"
+                  >
+                    {error}
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!loading &&
+                !error &&
+                slice.map((r) => (
+                  <TableRow key={r.id} className="border-t border-[#EEF0F5]">
+                    <TableCell className="pl-6 text-[#475467]">
+                      {r.diagnosis}
+                    </TableCell>
+                    <TableCell className="text-[#475467]">
+                      {r.provider}
+                    </TableCell>
+                    <TableCell className="text-[#475467]">
+                      {Number(r.timesDiagnosed ?? 0).toLocaleString("en-NG")}
+                    </TableCell>
+                    <TableCell className="text-[#475467]">
+                      {Number(r.enrolleeCount ?? 0).toLocaleString("en-NG")}
+                    </TableCell>
+                    <TableCell className="text-right text-[#475467] pr-6">
+                      {fmtNaira(r.cost)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+              {!loading && !error && slice.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={5}

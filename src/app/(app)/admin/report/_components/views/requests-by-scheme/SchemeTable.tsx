@@ -17,13 +17,53 @@ function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
 }
 
-export function SchemeTable({ rows }: { rows: UtilSchemeRow[] }) {
-  const [page, setPage] = React.useState(1)
-  const [pageSize] = React.useState(10)
+type Props = {
+  rows: UtilSchemeRow[]
 
-  const totalItems = rows?.length ?? 0
-  const start = (page - 1) * pageSize
-  const slice = rows.slice(start, start + pageSize)
+  /** ✅ for server pagination */
+  page?: number
+  onPageChange?: (page: number) => void
+  totalItems?: number
+  pageSize?: number
+
+  /** optional UI bits */
+  loading?: boolean
+  error?: string
+  fromLabel?: string
+  toLabel?: string
+}
+
+export function SchemeTable({
+  rows,
+
+  page: pageProp,
+  onPageChange: onPageChangeProp,
+  totalItems: totalItemsProp,
+  pageSize: pageSizeProp,
+
+  loading,
+  error,
+  fromLabel = "—",
+  toLabel = "—",
+}: Props) {
+  // local pagination fallback
+  const [localPage, setLocalPage] = React.useState(1)
+  const [localPageSize] = React.useState(10)
+
+  const isServerPaging =
+    typeof pageProp === "number" &&
+    typeof onPageChangeProp === "function" &&
+    typeof totalItemsProp === "number"
+
+  const page = isServerPaging ? pageProp ?? 1 : localPage
+  const pageSize = isServerPaging ? pageSizeProp ?? 20 : localPageSize
+  const totalItems = isServerPaging ? totalItemsProp ?? 0 : rows?.length ?? 0
+
+  const slice = React.useMemo(() => {
+    if (isServerPaging) return rows
+    const start = (page - 1) * pageSize
+    return rows.slice(start, start + pageSize)
+  }, [isServerPaging, rows, page, pageSize])
 
   const controlsId = "report-utilization-by-scheme-table"
 
@@ -31,10 +71,10 @@ export function SchemeTable({ rows }: { rows: UtilSchemeRow[] }) {
     <div className="px-6 pt-4">
       <div className="text-[12px]/[18px] text-[#667085]">
         <span className="mr-4">
-          From: <span className="text-[#344054]">May, 2025</span>
+          From: <span className="text-[#344054]">{fromLabel}</span>
         </span>
         <span>
-          To: <span className="text-[#344054]">Sep, 2025</span>
+          To: <span className="text-[#344054]">{toLabel}</span>
         </span>
       </div>
 
@@ -58,41 +98,63 @@ export function SchemeTable({ rows }: { rows: UtilSchemeRow[] }) {
             </TableHeader>
 
             <TableBody id={controlsId}>
-              {slice.map((r) => (
-                <TableRow key={r.id} className="border-t border-[#EEF0F5]">
-                  <TableCell className="pl-6 text-[#101828] font-medium">
-                    {r.schemeLabel}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">
-                    {r.planLabel}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">
-                    {r.enrolleeName}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">
-                    {Number(r.totalRequests ?? 0).toLocaleString("en-NG")}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">
-                    {fmtNaira(r.totalCost)}
-                  </TableCell>
-                  <TableCell className="text-[#475467]">
-                    {fmtNaira(r.avgCostPerEnrollee)}
-                  </TableCell>
-                  <TableCell className="text-right pr-6 text-[#475467]">
-                    {r.approvalRateLabel}
-                  </TableCell>
-                </TableRow>
-              ))}
-
-              {slice.length === 0 && (
+              {loading ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
                     className="py-12 text-center text-sm text-gray-500"
                   >
-                    No records found.
+                    Loading...
                   </TableCell>
                 </TableRow>
+              ) : error ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="py-12 text-center text-sm text-red-600"
+                  >
+                    {error}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <>
+                  {slice.map((r) => (
+                    <TableRow key={r.id} className="border-t border-[#EEF0F5]">
+                      <TableCell className="pl-6 text-[#101828] font-medium">
+                        {r.schemeLabel}
+                      </TableCell>
+                      <TableCell className="text-[#475467]">
+                        {r.planLabel}
+                      </TableCell>
+                      <TableCell className="text-[#475467]">
+                        {r.enrolleeName}
+                      </TableCell>
+                      <TableCell className="text-[#475467]">
+                        {Number(r.totalRequests ?? 0).toLocaleString("en-NG")}
+                      </TableCell>
+                      <TableCell className="text-[#475467]">
+                        {fmtNaira(r.totalCost)}
+                      </TableCell>
+                      <TableCell className="text-[#475467]">
+                        {fmtNaira(r.avgCostPerEnrollee)}
+                      </TableCell>
+                      <TableCell className="text-right pr-6 text-[#475467]">
+                        {r.approvalRateLabel}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                  {slice.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-12 text-center text-sm text-gray-500"
+                      >
+                        No records found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
               )}
             </TableBody>
           </Table>
@@ -100,7 +162,13 @@ export function SchemeTable({ rows }: { rows: UtilSchemeRow[] }) {
 
         <TablePagination
           page={page}
-          onPageChange={setPage}
+          onPageChange={(next) => {
+            if (isServerPaging) {
+              onPageChangeProp?.(next)
+            } else {
+              setLocalPage(next)
+            }
+          }}
           totalItems={totalItems}
           pageSize={pageSize}
           boundaryCount={1}

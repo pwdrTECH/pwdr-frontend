@@ -2,8 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Eye } from "lucide-react"
-import { ArrowUp, ArrowDown } from "lucide-react"
+import { Eye, ArrowUp, ArrowDown } from "lucide-react"
 import {
   Line,
   LineChart,
@@ -101,13 +100,48 @@ export function Analytic({
   )
 }
 
+/* ---------------- helpers ---------------- */
+
+function toNumber(v: any): number {
+  const n =
+    typeof v === "number" ? v : Number(String(v ?? "0").replace(/,/g, ""))
+  return Number.isFinite(n) ? n : 0
+}
+
+function formatCount(n: number) {
+  return n.toLocaleString("en-GB")
+}
+
+function formatPct(pct: number) {
+  const sign = pct > 0 ? "+" : pct < 0 ? "-" : ""
+  return `${sign}${Math.abs(pct).toFixed(1)}%`
+}
+
+function trendFromDelta(delta: number): "up" | "down" {
+  // treat 0 as up (neutral) so it doesn't look “bad”
+  return delta < 0 ? "down" : "up"
+}
+
+function computeTrend(chartData: Array<any>, key: SeriesKey) {
+  const len = chartData.length
+  const last = len >= 1 ? toNumber(chartData[len - 1]?.[key]) : 0
+  const prev = len >= 2 ? toNumber(chartData[len - 2]?.[key]) : 0
+
+  const diff = last - prev
+  const pct = prev === 0 ? (last === 0 ? 0 : 100) : (diff / prev) * 100
+
+  return {
+    value: formatCount(last),
+    percent: formatPct(pct),
+    trendDir: trendFromDelta(diff),
+  }
+}
+
+/* ---------------- component ---------------- */
+
 type Props = {
   data: MonthSeries[]
-
-  /** optional: make lines sharper/straight etc. (monotone | linear | step | stepAfter ...) */
   curveType?: any
-
-  /** controlled range (optional) */
   range?: RangeKey
   onRangeChange?: (v: RangeKey) => void
 }
@@ -121,7 +155,6 @@ export function ClaimsComparisonCard({
   const [activeKey, setActiveKey] = React.useState<SeriesKey>("approved")
   const [hidden, setHidden] = React.useState(false)
 
-  // ✅ internal range fallback (uncontrolled)
   const [rangeState, setRangeState] = React.useState<RangeKey>("month")
   const range = rangeProp ?? rangeState
   const setRange = onRangeChange ?? setRangeState
@@ -130,6 +163,15 @@ export function ClaimsComparisonCard({
     () => aggregateSeries(data, range),
     [data, range]
   )
+
+  // ✅ derive analytics from chartData (deps are correct)
+  const analytics = React.useMemo(() => {
+    return {
+      approved: computeTrend(chartData as any[], "approved"),
+      rejected: computeTrend(chartData as any[], "rejected"),
+      pending: computeTrend(chartData as any[], "pending"),
+    }
+  }, [chartData])
 
   return (
     <div
@@ -180,10 +222,10 @@ export function ClaimsComparisonCard({
               >
                 <Analytic
                   title="Approved Claims"
-                  value="8,556"
-                  percent="+5.2%"
+                  value={analytics.approved.value}
+                  percent={analytics.approved.percent}
                   dotColor="#02A32D"
-                  trendDir="up"
+                  trendDir={analytics.approved.trendDir}
                 />
               </button>
 
@@ -195,10 +237,10 @@ export function ClaimsComparisonCard({
               >
                 <Analytic
                   title="Rejected Claims"
-                  value="8,556"
-                  percent="-5.2%"
+                  value={analytics.rejected.value}
+                  percent={analytics.rejected.percent}
                   dotColor="#F85E5E"
-                  trendDir="down"
+                  trendDir={analytics.rejected.trendDir}
                 />
               </button>
 
@@ -210,10 +252,10 @@ export function ClaimsComparisonCard({
               >
                 <Analytic
                   title="Pending Claims"
-                  value="8,556"
-                  percent="+5.2%"
+                  value={analytics.pending.value}
+                  percent={analytics.pending.percent}
                   dotColor="#F4BF13"
-                  trendDir="up"
+                  trendDir={analytics.pending.trendDir}
                 />
               </button>
             </div>

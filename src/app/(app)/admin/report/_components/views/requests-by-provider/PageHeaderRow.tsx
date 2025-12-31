@@ -66,7 +66,7 @@ export function ProviderReportHeader() {
           type="button"
           className="px-3 py-2 border border-[#EAECF0] rounded-[8px] text-[14px] text-[#344054] bg-white"
         >
-          Filter – All time
+          Filter - All time
         </button>
 
         {/* Export */}

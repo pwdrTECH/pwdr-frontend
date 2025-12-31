@@ -1,8 +1,20 @@
 "use client"
 
-import * as React from "react"
 import { cn } from "@/lib/utils"
-import type { UtilizationLocationRow } from "./mock"
+import * as React from "react"
+
+export type LocationSummary = {
+  total_number_of_providers: number
+  total_claims_amount: number
+  approved_claims_amount: number
+  rejected_claims_amount: number
+}
+
+function toNumber(x: unknown) {
+  if (typeof x === "number") return x
+  const n = Number(String(x ?? "").replace(/,/g, ""))
+  return Number.isFinite(n) ? n : 0
+}
 
 function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
@@ -32,31 +44,33 @@ function Stat({
   )
 }
 
-export function LocationStatsRow({ rows }: { rows: UtilizationLocationRow[] }) {
-  const stats = React.useMemo(() => {
-    const totalProviders = new Set(rows.map((r) => r.provider)).size
-    const totalClaims = rows.reduce((a, b) => a + (b.approvedClaim ?? 0), 0)
-
-    // mock split (matches screenshot style)
-    const approved = totalClaims
-    const rejected = Math.round(totalClaims * 0.1456)
-    const pending = Math.round(totalClaims * 0.2266)
+export function LocationStatsRow({
+  summary,
+}: {
+  summary?: Partial<LocationSummary>
+}) {
+  const s = React.useMemo(() => {
+    const totalProviders = toNumber(summary?.total_number_of_providers)
+    const totalClaims = toNumber(summary?.total_claims_amount)
+    const approved = toNumber(summary?.approved_claims_amount)
+    const rejected = toNumber(summary?.rejected_claims_amount)
+    const pending = Math.max(0, totalClaims - approved - rejected)
 
     return { totalProviders, totalClaims, approved, rejected, pending }
-  }, [rows])
+  }, [summary])
 
   return (
     <div className="w-full border-b border-[#EEF0F5] px-6 py-6">
-      <div className="grid grid-cols-5 gap-8">
-        <Stat label="Total Providers" value={String(stats.totalProviders)} />
-        <Stat label="Total claims" value={fmtNaira(stats.totalClaims)} />
-        <Stat label="Approved claims" value={fmtNaira(stats.approved)} />
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5 lg:gap-8">
+        <Stat label="Total Providers" value={String(s.totalProviders)} />
+        <Stat label="Total claims" value={fmtNaira(s.totalClaims)} />
+        <Stat label="Approved claims" value={fmtNaira(s.approved)} />
         <Stat
           label="Rejected claims"
-          value={fmtNaira(stats.rejected)}
+          value={fmtNaira(s.rejected)}
           valueClassName="text-[#B42318]"
         />
-        <Stat label="Pending Claims" value={fmtNaira(stats.pending)} />
+        <Stat label="Pending Claims" value={fmtNaira(s.pending)} />
       </div>
     </div>
   )

@@ -13,12 +13,9 @@ type Filters = {
 }
 
 type Props = {
-  value?: Partial<Filters>
-  onChange?: (next: Filters) => void
+  value: Filters
+  onChange: (next: Filters) => void
 }
-
-// IMPORTANT: Do NOT put value: "" inside Select.Item options.
-// Use labels via PillSelect label + placeholder; options are real values only.
 
 const SERVICE_OPTIONS = [
   { label: "Inpatient", value: "inpatient" },
@@ -59,20 +56,22 @@ const COST_RANGE_OPTIONS = [
   { label: "₦1,000,000+", value: "1m+" },
 ]
 
-export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
-  const [filters, setFilters] = React.useState<Filters>({
+function normalizeIncoming(value: Filters): Filters {
+  return {
     service: value?.service ?? "",
     location: value?.location ?? "",
     scheme: value?.scheme ?? "",
     plan: value?.plan ?? "",
     dateRange: value?.dateRange ?? "",
     costRange: value?.costRange ?? "",
-  })
+  }
+}
+
+export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
+  const filters = React.useMemo(() => normalizeIncoming(value), [value])
 
   function patch<K extends keyof Filters>(k: K, v: Filters[K]) {
-    const next = { ...filters, [k]: v }
-    setFilters(next)
-    onChange?.(next)
+    onChange({ ...filters, [k]: v })
   }
 
   return (
@@ -85,6 +84,7 @@ export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
           options={SERVICE_OPTIONS}
           placeholder="Service"
         />
+
         <PillSelect
           label="Location"
           value={filters.location}
@@ -92,6 +92,7 @@ export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
           options={LOCATION_OPTIONS}
           placeholder="Location"
         />
+
         <PillSelect
           label="Schemes"
           value={filters.scheme}
@@ -99,6 +100,7 @@ export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
           options={SCHEME_OPTIONS}
           placeholder="Schemes"
         />
+
         <PillSelect
           label="Plan"
           value={filters.plan}
@@ -106,6 +108,7 @@ export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
           options={PLAN_OPTIONS}
           placeholder="Plan"
         />
+
         <PillSelect
           label="Date Range"
           value={filters.dateRange}
@@ -113,6 +116,7 @@ export function UtilizationDiagnosisFiltersRow({ value, onChange }: Props) {
           options={DATE_RANGE_OPTIONS}
           placeholder="Date Range"
         />
+
         <PillSelect
           label="Cost Range"
           value={filters.costRange}

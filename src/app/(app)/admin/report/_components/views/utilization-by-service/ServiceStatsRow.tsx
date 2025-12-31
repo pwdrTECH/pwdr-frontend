@@ -1,63 +1,53 @@
 "use client"
 
-import { cn } from "@/lib/utils"
-import * as React from "react"
-import type { UtilServiceRow } from "./mock"
-
+function fmtInt(n: number) {
+  return Number(n || 0).toLocaleString("en-NG")
+}
 function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
 }
 
-function Stat({
-  label,
-  value,
-  valueClassName,
-}: {
-  label: string
-  value: string
-  valueClassName?: string
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="text-[12px]/[18px] text-[#667085]">{label}</div>
-      <div
-        className={cn(
-          "text-[14px]/[20px] font-semibold text-[#101828]",
-          valueClassName
-        )}
-      >
-        {value}
-      </div>
+    <div className="flex flex-col items-center justify-center gap-3 py-7">
+      <div className="text-[12px] text-[#667085]">{label}</div>
+      <div className="text-[20px] font-semibold text-[#101828]">{value}</div>
     </div>
   )
 }
 
-export function ServiceStatsRow({ rows }: { rows: UtilServiceRow[] }) {
-  const { noOfServices, totalCost, avgCost, mostUsed } = React.useMemo(() => {
-    const totalCost = rows.reduce((a, b) => a + (b.cost ?? 0), 0)
-    const services = rows.map((r) => r.service)
-    const uniqueServices = new Set(services)
-    const counts = services.reduce<Record<string, number>>((acc, s) => {
-      acc[s] = (acc[s] ?? 0) + 1
-      return acc
-    }, {})
-    const mostUsed =
-      Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—"
-    const avgCost = rows.length ? Math.round(totalCost / rows.length) : 0
+type ApiSummary = {
+  total_number_of_services: number
+  total_claims_amount: number
+  average_service_cost: number
+  most_used_service: string
+}
 
-    return {
-      noOfServices: uniqueServices.size,
-      totalCost,
-      avgCost,
-      mostUsed,
-    }
-  }, [rows])
+export function ServiceStatsRow({
+  rows,
+  summary,
+}: {
+  rows: any[]
+  summary?: ApiSummary
+}) {
+  // fallback if summary not provided
+  const fallbackTotal = rows.length
+  const fallbackTotalCost = rows.reduce(
+    (a: number, b: any) => a + (Number(b?.cost) || 0),
+    0
+  )
+  const fallbackAvg = fallbackTotal ? fallbackTotalCost / fallbackTotal : 0
+
+  const totalServices = summary?.total_number_of_services ?? fallbackTotal
+  const totalAmount = summary?.total_claims_amount ?? fallbackTotalCost
+  const avgCost = summary?.average_service_cost ?? fallbackAvg
+  const mostUsed = summary?.most_used_service ?? "—"
 
   return (
-    <div className="w-full border-b border-[#EEF0F5] px-6 py-6">
-      <div className="grid grid-cols-4 gap-8">
-        <Stat label="No. of Services" value={String(noOfServices)} />
-        <Stat label="Total Cost" value={fmtNaira(totalCost)} />
+    <div className="w-full border-b border-[#EEF0F5]">
+      <div className="grid grid-cols-4 px-6">
+        <Stat label="Total Services" value={fmtInt(totalServices)} />
+        <Stat label="Total Claims Amount" value={fmtNaira(totalAmount)} />
         <Stat label="Average Service Cost" value={fmtNaira(avgCost)} />
         <Stat label="Most Used Service" value={mostUsed} />
       </div>

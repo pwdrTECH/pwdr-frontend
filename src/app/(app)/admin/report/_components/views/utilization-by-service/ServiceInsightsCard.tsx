@@ -7,9 +7,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,60 +16,25 @@ import {
   StatusRangePills,
   type RangeKey,
 } from "../requests-by-provider/StatusRangePills"
-import type { MonthlyServiceCostPoint, TopServiceDatum } from "./mock"
+
+export type TopServiceDatum = {
+  key: string
+  label: string
+  value: number
+  percent: number
+  color: string
+}
+
+export type MonthlyServiceCostPoint = {
+  m: string // month label
+  s1?: number // inpatient
+  s2?: number // outpatient
+  s3?: number // pharmacy
+  s4?: number // others
+}
 
 function fmtInt(n: number) {
   return Number(n || 0).toLocaleString("en-NG")
-}
-
-function MiniCard({ d }: { d: TopServiceDatum }) {
-  return (
-    <div className="h-[132px] rounded-[16px] bg-white p-4 border border-[#EAECF0] flex flex-col justify-between">
-      <div className="flex items-center gap-3">
-        <span
-          className="h-4 w-4 rounded-[4px]"
-          style={{ background: d.color }}
-        />
-        <div className="text-[20px] leading-[100%] font-medium text-[#101828]">
-          {d.label}
-        </div>
-      </div>
-
-      <div className="flex items-end justify-between">
-        <div className="flex flex-col gap-2">
-          <div className="text-[14px] text-[#7A7A7A]">Enrollees Using</div>
-          <div className="text-[20px] font-semibold text-[#111827]">
-            {fmtInt(d.value)}
-          </div>
-        </div>
-        <div className="text-[18px] font-semibold text-[#1D76D9]">
-          {d.percent}%
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Donut({ data }: { data: TopServiceDatum[] }) {
-  return (
-    <div className="w-[360px] flex items-center justify-center">
-      <PieChart width={260} height={260}>
-        <Pie
-          data={data}
-          dataKey="value"
-          innerRadius={86}
-          outerRadius={120}
-          stroke="none"
-          startAngle={90}
-          endAngle={-270}
-        >
-          {data.map((d) => (
-            <Cell key={d.key} fill={d.color} />
-          ))}
-        </Pie>
-      </PieChart>
-    </div>
-  )
 }
 
 function TooltipBox({
@@ -140,8 +102,8 @@ export function ServiceInsightsCard({
 
   const shownTop = React.useMemo(() => {
     const [a, b, c, others] = top
-    if (showTop === 3) return [a, b, c, others]
-    if (showTop === 2) return [a, b, others]
+    if (showTop === 3) return [a, b, c, others].filter(Boolean)
+    if (showTop === 2) return [a, b, others].filter(Boolean)
     return top
   }, [top, showTop])
 
@@ -199,23 +161,20 @@ export function ServiceInsightsCard({
         </div>
       ) : (
         <>
-          {/* donut + cards */}
+          {/* (Your donut/cards are currently commented out — leaving as-is) */}
           <div className="mt-8 flex items-center gap-10">
-            <Donut data={shownTop} />
-
+            <div className="w-[360px] flex items-center justify-center" />
             <div className="flex-1 grid grid-cols-2 gap-6">
-              {shownTop.map((d) => (
-                <MiniCard key={d.key} d={d} />
+              {shownTop.map((_, i) => (
+                <React.Fragment key={`top-${i + 1}`} />
               ))}
             </div>
           </div>
 
-          {/* bar chart title */}
           <div className="mt-10 text-[18px] font-medium text-[#35404A]">
             Monthly Cost on Services
           </div>
 
-          {/* bars */}
           <div className="mt-6 h-[260px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart

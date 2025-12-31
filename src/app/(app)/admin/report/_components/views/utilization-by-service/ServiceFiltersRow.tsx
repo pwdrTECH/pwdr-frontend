@@ -66,23 +66,22 @@ const COST_RANGE_OPTIONS = [
 ]
 
 export function ServiceFiltersRow({ value, onChange }: Props) {
-  const [filters, setFilters] = React.useState<Filters>({
+  const [filters, setFilters] = React.useState<Filters>(() => ({
     service: value?.service ?? "all",
     location: value?.location ?? "all",
     scheme: value?.scheme ?? "all",
     plan: value?.plan ?? "all",
     dateRange: value?.dateRange ?? "may-sep-2025",
     costRange: value?.costRange ?? "all",
-  })
+  }))
 
-  function patch<K extends keyof Filters>(k: K, v: Filters[K]) {
-    const next = { ...filters, [k]: v }
+  function patch<K extends keyof Filters>(key: K, val: Filters[K]) {
+    const next = { ...filters, [key]: val }
     setFilters(next)
     onChange?.(next)
   }
-
   return (
-    <div className="w-full border-b border-[#EEF0F5] px-6 py-4 flex justify-end items-end">
+    <div className="w-full border-b border-[#EEF0F5] px-6 py-4 flex justify-end">
       <div className="flex flex-wrap gap-4">
         <PillSelect
           label="Service"

@@ -33,6 +33,21 @@ function Square({ color }: { color: string }) {
   )
 }
 
+function fmtInt(n: number) {
+  return Number(n || 0).toLocaleString("en-NG")
+}
+
+function pctLabel(value: number) {
+  const abs = Math.abs(value)
+  const s = abs.toFixed(1)
+  return `${value >= 0 ? "+" : "-"}${s}%`
+}
+
+function safeNum(x: any) {
+  const n = Number(x ?? 0)
+  return Number.isFinite(n) ? n : 0
+}
+
 function TrendPill({
   value,
   direction,
@@ -102,6 +117,27 @@ export function Analytic({
   )
 }
 
+function computeTotal(chartData: any[], key: SeriesKey) {
+  return chartData.reduce((a, r) => a + safeNum(r?.[key]), 0)
+}
+
+function computeTrend(chartData: any[], key: SeriesKey) {
+  // trend compares last point to previous point
+  const n = chartData.length
+  const last = safeNum(chartData[n - 1]?.[key])
+  const prev = safeNum(chartData[n - 2]?.[key])
+
+  if (n < 2) {
+    return { pct: 0, dir: "up" as const }
+  }
+
+  // avoid division by zero; if prev=0 and last>0 => 100%
+  const base = prev === 0 ? 1 : prev
+  const pct = ((last - prev) / base) * 100
+  const dir = pct < 0 ? ("down" as const) : ("up" as const)
+  return { pct, dir }
+}
+
 export function ClaimsComparisonCard({ data }: { data: MonthSeries[] }) {
   const [activeKey, setActiveKey] = React.useState<SeriesKey>("approved")
   const [range, setRange] = React.useState<RangeKey>("month")
@@ -111,6 +147,34 @@ export function ClaimsComparisonCard({ data }: { data: MonthSeries[] }) {
     () => aggregateSeries(data, range),
     [data, range]
   )
+
+  const analytics = React.useMemo(() => {
+    const approvedTotal = computeTotal(chartData as any[], "approved")
+    const rejectedTotal = computeTotal(chartData as any[], "rejected")
+    const pendingTotal = computeTotal(chartData as any[], "pending")
+
+    const approvedTrend = computeTrend(chartData as any[], "approved")
+    const rejectedTrend = computeTrend(chartData as any[], "rejected")
+    const pendingTrend = computeTrend(chartData as any[], "pending")
+
+    return {
+      approved: {
+        value: fmtInt(approvedTotal),
+        percent: pctLabel(approvedTrend.pct),
+        dir: approvedTrend.dir,
+      },
+      rejected: {
+        value: fmtInt(rejectedTotal),
+        percent: pctLabel(rejectedTrend.pct),
+        dir: rejectedTrend.dir,
+      },
+      pending: {
+        value: fmtInt(pendingTotal),
+        percent: pctLabel(pendingTrend.pct),
+        dir: pendingTrend.dir,
+      },
+    }
+  }, [chartData])
 
   return (
     <div
@@ -161,10 +225,10 @@ export function ClaimsComparisonCard({ data }: { data: MonthSeries[] }) {
               >
                 <Analytic
                   title="Approved Claims"
-                  value="8,556"
-                  percent="+5.2%"
+                  value={analytics.approved.value}
+                  percent={analytics.approved.percent}
                   dotColor="#02A32D"
-                  trendDir="up"
+                  trendDir={analytics.approved.dir}
                 />
               </button>
 
@@ -176,10 +240,10 @@ export function ClaimsComparisonCard({ data }: { data: MonthSeries[] }) {
               >
                 <Analytic
                   title="Rejected Claims"
-                  value="8,556"
-                  percent="-5.2%"
+                  value={analytics.rejected.value}
+                  percent={analytics.rejected.percent}
                   dotColor="#F85E5E"
-                  trendDir="down"
+                  trendDir={analytics.rejected.dir}
                 />
               </button>
 
@@ -191,10 +255,10 @@ export function ClaimsComparisonCard({ data }: { data: MonthSeries[] }) {
               >
                 <Analytic
                   title="Pending Claims"
-                  value="8,556"
-                  percent="+5.2%"
+                  value={analytics.pending.value}
+                  percent={analytics.pending.percent}
                   dotColor="#F4BF13"
-                  trendDir="up"
+                  trendDir={analytics.pending.dir}
                 />
               </button>
             </div>

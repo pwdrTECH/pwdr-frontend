@@ -18,16 +18,34 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function ProviderStatsRow({ rows }: { rows: any[] }) {
-  const providers = React.useMemo(() => rows.length, [rows])
-  const totalCost = React.useMemo(
+export type ProviderSummary = {
+  total_number_of_providers: number
+  total_cost: number
+  total_requests: number
+  average_approval_rate: number
+}
+
+export function ProviderStatsRow({
+  rows,
+  summary,
+}: {
+  rows: any[]
+  summary?: Partial<ProviderSummary>
+}) {
+  const fallbackProviders = React.useMemo(() => rows.length, [rows])
+  const fallbackTotalCost = React.useMemo(
     () => rows.reduce((a: number, b: any) => a + (b.totalCost ?? 0), 0),
     [rows]
   )
-  const totalRequests = React.useMemo(
+  const fallbackTotalRequests = React.useMemo(
     () => rows.reduce((a: number, b: any) => a + (b.requests ?? 0), 0),
     [rows]
   )
+
+  const providers = summary?.total_number_of_providers ?? fallbackProviders
+  const totalCost = summary?.total_cost ?? fallbackTotalCost
+  const totalRequests = summary?.total_requests ?? fallbackTotalRequests
+  const avgApprovalRate = summary?.average_approval_rate ?? 0
 
   return (
     <div className="w-full border-b border-[#EEF0F5]">
@@ -35,7 +53,7 @@ export function ProviderStatsRow({ rows }: { rows: any[] }) {
         <Stat label="Providers" value={fmtInt(providers)} />
         <Stat label="Total Cost" value={fmtNaira(totalCost)} />
         <Stat label="Total Requests" value={fmtInt(totalRequests)} />
-        <Stat label="Avg. Approval Rate" value="50%" />
+        <Stat label="Avg. Approval Rate" value={`${avgApprovalRate}%`} />
       </div>
     </div>
   )
