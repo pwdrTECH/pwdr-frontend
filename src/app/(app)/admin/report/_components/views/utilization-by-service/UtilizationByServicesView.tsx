@@ -44,12 +44,6 @@ type ApiSummary = {
   most_used_service: string
 }
 
-type ApiTopService = {
-  service_name: string
-  enrolee_count: number | null
-  utilization: number
-}
-
 type ApiLine = {
   service_name: string
   enrolee_id: string
@@ -69,6 +63,41 @@ type ApiPagination = {
   total_pages: number
   has_next: boolean
   has_prev: boolean
+}
+// --- types from API ---
+type ApiTopService = {
+  service_name: string
+  enrolee_count: number | null
+  utilization: number
+}
+
+type ApiMonthlyStat = {
+  month: number
+  month_name: string
+  year: number
+  services: Array<{
+    service_name: string
+    utilization: number
+  }>
+}
+
+// --- UI expects this donut datum ---
+export type TopServiceDatum = {
+  key: string
+  label: string
+  value: number
+  percent: number
+  color: string
+  enrolleeCount: number
+}
+
+// matches your ServiceInsightsCard monthly shape
+export type MonthlyServiceCostPoint = {
+  m: string
+  s1?: number
+  s2?: number
+  s3?: number
+  s4?: number
 }
 
 function mapApiLineToRow(item: ApiLine, index: number): UtilServiceRow {
@@ -93,23 +122,66 @@ function mapApiLineToRow(item: ApiLine, index: number): UtilServiceRow {
   } as unknown as UtilServiceRow
 }
 
-function mapTopServices(apiTop: ApiTopService[]) {
-  // shape expected by ServiceInsightsCard (based on your previous deriveTopServices)
-  return (apiTop ?? []).map((x, i) => ({
-    id: `${x.service_name}-${i}`,
-    name: String(x.service_name ?? "—"),
-    total: toNumber(x.utilization ?? 0),
-    count: typeof x.enrolee_count === "number" ? x.enrolee_count : 0,
-  }))
+const DONUT_COLORS = ["#1671D9", "#AAB511", "#D5314D", "#EAEAEA"]
+
+function mapTopServices(apiTop: ApiTopService[]): TopServiceDatum[] {
+  const list = Array.isArray(apiTop) ? apiTop : []
+
+  const total = list.reduce((acc, x) => acc + toNumber(x.utilization), 0) || 1
+
+  return list.map((x, i) => {
+    const value = toNumber(x.utilization)
+    const percent = Math.round((value / total) * 100)
+    const isOthers = String(x.service_name ?? "").toLowerCase() === "others"
+
+    return {
+      key: String(x.service_name ?? `item-${i}`),
+      label: String(x.service_name ?? "—"),
+      value,
+      percent,
+      color: isOthers ? "#EAEAEA" : DONUT_COLORS[i] ?? "#EAEAEA",
+      enrolleeCount: typeof x.enrolee_count === "number" ? x.enrolee_count : 0,
+    }
+  })
 }
 
-/**
- * Important:
- * Your current API does NOT return a date field in line_listing,
- * so "monthly" chart cannot be accurately derived.
- * We return an empty list (or you can hide that chart inside ServiceInsightsCard if empty).
- */
-const EMPTY_MONTHLY: Array<{ month: string; cost: number; count: number }> = []
+function mapMonthlyStatistics(
+  monthly: ApiMonthlyStat[],
+  top: TopServiceDatum[]
+): MonthlyServiceCostPoint[] {
+  if (!Array.isArray(monthly) || monthly.length === 0) return []
+
+  // keep a stable mapping for s1..s4 based on CURRENT top list order
+  const keys = top.slice(0, 4).map((t) => t.label)
+
+  const keyToSlot = new Map<string, "s1" | "s2" | "s3" | "s4">()
+  if (keys[0]) keyToSlot.set(keys[0], "s1")
+  if (keys[1]) keyToSlot.set(keys[1], "s2")
+  if (keys[2]) keyToSlot.set(keys[2], "s3")
+  if (keys[3]) keyToSlot.set(keys[3], "s4")
+
+  return monthly.map((m) => {
+    const row: MonthlyServiceCostPoint = {
+      m: String(m.month_name ?? m.month ?? ""),
+      s1: 0,
+      s2: 0,
+      s3: 0,
+      s4: 0,
+    }
+
+    for (const s of m.services ?? []) {
+      const name = String(s.service_name ?? "")
+      const slot = keyToSlot.get(name)
+
+      if (slot) row[slot] = toNumber(s.utilization)
+      else {
+        if (keys[3]) row.s4 = toNumber(row.s4) + toNumber(s.utilization)
+      }
+    }
+
+    return row
+  })
+}
 
 export function UtilizationByServiceView() {
   const { q } = useReportQuery()
@@ -151,7 +223,18 @@ export function UtilizationByServiceView() {
   const summary: ApiSummary | undefined = utilQuery.data?.data?.summary
   const apiTopServices: ApiTopService[] =
     utilQuery.data?.data?.top_services ?? []
+  const top = React.useMemo(
+    () => mapTopServices(apiTopServices),
+    [apiTopServices]
+  )
 
+  const apiMonthlyStats: ApiMonthlyStat[] =
+    (utilQuery.data?.data as any)?.monthly_statistics ?? []
+
+  const monthly = React.useMemo(
+    () => mapMonthlyStatistics(apiMonthlyStats, top),
+    [apiMonthlyStats, top]
+  )
   const apiList: ApiLine[] = React.useMemo(() => {
     const list = utilQuery.data?.data?.line_listing
     return Array.isArray(list) ? list : EMPTY_LIST
@@ -207,15 +290,6 @@ export function UtilizationByServiceView() {
     return () => setConfig(null)
   }, [rows, setConfig])
 
-  // Use API top_services (not derived from paged list)
-  const top = React.useMemo(
-    () => mapTopServices(apiTopServices),
-    [apiTopServices]
-  )
-
-  // Monthly cannot be computed from current payload
-  const monthly = EMPTY_MONTHLY
-
   return (
     <div className="w-full">
       <ServiceFiltersRow
@@ -226,7 +300,7 @@ export function UtilizationByServiceView() {
         }}
       />
 
-      {/* ✅ use API summary for stats (fallback to rows if summary missing) */}
+      {/*  use API summary for stats (fallback to rows if summary missing) */}
       <ServiceStatsRow
         rows={rows}
         summary={
@@ -257,8 +331,8 @@ export function UtilizationByServiceView() {
 
       <div className="px-6 py-6 space-y-6">
         <ServiceInsightsCard
-          top={top as any}
-          monthly={monthly as any}
+          top={top}
+          monthly={monthly}
           range={range}
           onRangeChange={setRange}
         />

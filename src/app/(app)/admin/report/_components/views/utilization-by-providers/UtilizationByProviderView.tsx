@@ -50,16 +50,31 @@ function mapApiToUtilProviderRow(
   return {
     id: `${item.provider_name ?? "provider"}-${index}`,
     providerName: item.provider_name ?? "—",
-    providerCode: "—", // not in payload (update when backend adds it)
+    providerCode: (item as any).provider_code ?? "—", // if backend adds later
     locationLabel: item.location ?? "—",
     patientsCount: Number(item.patient_count ?? 0),
     requests: Number(item.number_of_requests ?? 0),
     totalCost: Number(item.total_cost ?? 0),
     avgCostPerEnrollee: Number(item.average_cost_per_enrollee ?? 0),
-    avatarUrl: "", // optional
-    // keep your optional filter fields if UtilProviderRow has them
+    avatarUrl: (item as any).logo_url ?? "",
   } as UtilProviderRow
 }
+
+function toPercent(x: number) {
+  if (!Number.isFinite(x)) return 0
+  return Math.round(x)
+}
+
+const PIE_COLORS = [
+  "#1671D9",
+  "#AAB511",
+  "#D5314D",
+  "#7A5AF8",
+  "#12B76A",
+  "#F79009",
+  "#F04438",
+  "#EAEAEA", // Others
+]
 
 export function UtilizationByProviderView() {
   const { q } = useReportQuery()
@@ -68,7 +83,6 @@ export function UtilizationByProviderView() {
   const [range, setRange] = React.useState<RangeKey>("month")
   const [page, setPage] = React.useState(1)
 
-  // TODO: when you wire real date range, compute these from filters.dateRange
   const [startDate] = React.useState("")
   const [endDate] = React.useState("")
 
@@ -93,8 +107,6 @@ export function UtilizationByProviderView() {
       end_date: endDate,
       min_cost: cost.min_cost,
       max_cost: cost.max_cost,
-
-      // optional (safe if backend ignores)
       location: filters.location !== "__all__" ? filters.location : "",
       scheme: filters.scheme !== "__all__" ? filters.scheme : "",
       plan: filters.plan !== "__all__" ? filters.plan : "",
@@ -111,7 +123,7 @@ export function UtilizationByProviderView() {
     ]
   )
 
-  const utilQuery = useUtilizationByProvider(apiFilters)
+  const utilQuery = useUtilizationByProvider(apiFilters as any)
 
   const pagination = utilQuery.data?.data?.pagination
   const summary = utilQuery.data?.data?.summary as
@@ -128,7 +140,6 @@ export function UtilizationByProviderView() {
 
     let mapped = apiList.map((it, i) => mapApiToUtilProviderRow(it, i))
 
-    // search (current page)
     const s = q.trim().toLowerCase()
     if (s) {
       mapped = mapped.filter(
@@ -138,7 +149,6 @@ export function UtilizationByProviderView() {
       )
     }
 
-    // UI filters fallback
     if (filters.location !== "__all__") {
       mapped = mapped.filter(
         (r) => (r.locationLabel ?? "").toLowerCase() === filters.location
@@ -181,10 +191,61 @@ export function UtilizationByProviderView() {
     return () => setConfig(null)
   }, [rows, setConfig])
 
-  // charts: keep empty until you share their payloads
-  const requestsSeries = React.useMemo(() => [], [])
-  const servicesBars = React.useMemo(() => [], [])
-  const top7Providers = React.useMemo(() => [], [])
+  // ============================
+  // REAL DATA MAPPERS (BACKEND)
+  // ============================
+
+  // A) RequestsChartCard from monthly_statistics
+  const requestsSeries = React.useMemo(() => {
+    const monthly = (utilQuery.data?.data as any)?.monthly_statistics
+    if (!Array.isArray(monthly)) return []
+    return monthly.map((m: any, i: number) => ({
+      m: String(m.month_name ?? m.month ?? `M${i + 1}`),
+      requests: Number(m.request_count ?? 0),
+    }))
+  }, [utilQuery.data?.data])
+  console.log("montly", requestsSeries)
+  // B) Top7ProvidersByCostCard from top_providers
+  const top7Providers = React.useMemo(() => {
+    const tops = (utilQuery.data?.data as any)?.top_providers
+    if (!Array.isArray(tops)) return []
+
+    const total =
+      tops.reduce(
+        (acc: number, t: any) => acc + Number(t.total_claims ?? 0),
+        0
+      ) || 1
+
+    return tops.slice(0, 7).map((t: any, i: number) => {
+      const amount = Number(t.total_claims ?? 0)
+      const percent = toPercent((amount / total) * 100)
+
+      const name = String(t.provider_name ?? "—")
+      const isOthers = name.toLowerCase() === "others"
+
+      return {
+        id: `${name}-${i}`,
+        label: name,
+        code: String(t.provider_code ?? "—"),
+        amount: fmtNaira(amount),
+        percent,
+        color: isOthers ? "#EAEAEA" : PIE_COLORS[i] ?? "#EAEAEA",
+        logoUrl: String(t.logo_url ?? ""),
+      }
+    })
+  }, [utilQuery.data?.data])
+
+  // C) ServicesOfferedByProvidersCard
+  // NOTE: backend does NOT provide "services offered count" yet.
+  // If backend later adds "services_count" in line_listing, we will use it automatically.
+  const servicesBars = React.useMemo(() => {
+    if (!rows.length) return []
+    return rows.map((r, i) => ({
+      id: `${r.providerName}-${i}`,
+      provider: r.providerName,
+      value: Number((r as any).servicesCount ?? (r as any).services_count ?? 0),
+    }))
+  }, [rows])
 
   return (
     <div className="w-full">

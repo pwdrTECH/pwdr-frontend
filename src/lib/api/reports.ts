@@ -19,9 +19,9 @@ export interface ReportsPagination {
 export type ApiStatus = "success" | "empty" | "error" | string
 
 /**
- * Generic report response that supports:
- * - mandatory normalized fields: summary, line_listing, top_services, pagination
- * - optional "extra" payload keys per endpoint (e.g. state_statistics)
+ * Generic report response.
+ * NOTE: Some endpoints return extra fields on `data` (e.g. state_statistics).
+ * For those, you can set `TExtra` to add them into `data`.
  */
 export type ReportResponse<TSummary, TRow, TService = unknown, TExtra = {}> = {
   status: ApiStatus
@@ -138,19 +138,19 @@ type ReportFetchArgs = {
 }
 
 /**
- * Fetch + normalize a report endpoint.
- * - Always returns `status: "success"` for both success and empty from API
- * - Always returns safe arrays and pagination
- * - Preserves endpoint-specific extra keys in `data` via `TExtra`
+ * Fetches a report and normalizes:
+ * - missing pagination
+ * - missing line_listing
+ * - missing top_services
+ * - keeps any extra fields returned by the endpoint inside `data` (via spread)
  */
-async function fetchReport<TSummary, TRow, TService, TExtra = {}>({
+async function fetchReport<TSummary, TRow, TService = unknown, TExtra = {}>({
   endpoint,
   body,
   page,
   limit,
 }: ReportFetchArgs): Promise<ReportResponse<TSummary, TRow, TService, TExtra>> {
   const url = REPORT_ENDPOINTS[endpoint]
-
   const res = await apiClient.post<
     ReportResponse<TSummary, TRow, TService, TExtra>
   >(url, body)
@@ -161,10 +161,10 @@ async function fetchReport<TSummary, TRow, TService, TExtra = {}>({
   const incoming = payload.data
 
   const safePagination: ReportsPagination =
-    incoming?.pagination ?? makeEmptyPagination(page, limit)
+    (incoming as any)?.pagination ?? makeEmptyPagination(page, limit)
 
-  const safeListing: TRow[] = Array.isArray(incoming?.line_listing)
-    ? (incoming?.line_listing as TRow[])
+  const safeListing: TRow[] = Array.isArray((incoming as any)?.line_listing)
+    ? ((incoming as any).line_listing as TRow[])
     : []
 
   const safeTopServices: TService[] = Array.isArray(
@@ -174,13 +174,13 @@ async function fetchReport<TSummary, TRow, TService, TExtra = {}>({
     : []
 
   const safeSummary: TSummary =
-    (incoming?.summary as TSummary) ?? ({} as TSummary)
+    ((incoming as any)?.summary as TSummary) ?? ({} as TSummary)
 
   if (payload.status === "success") {
     return {
       ...payload,
       data: {
-        ...(incoming as any), // keep extra keys e.g. state_statistics
+        ...(incoming as any),
         summary: safeSummary,
         line_listing: safeListing,
         top_services: safeTopServices,
@@ -194,7 +194,7 @@ async function fetchReport<TSummary, TRow, TService, TExtra = {}>({
       ...payload,
       status: "success",
       data: {
-        ...(incoming as any), // keep extra keys even on empty
+        ...(incoming as any),
         summary: safeSummary,
         line_listing: [],
         top_services: safeTopServices,
@@ -296,6 +296,7 @@ export function useEnroleeRequests(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_ENROLEE_REQUESTS_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -387,6 +388,7 @@ export function useProviderRequests(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_PROVIDER_REQUESTS_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -482,6 +484,7 @@ export function useUtilizationByEnrollee(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTIL_BY_ENROLLEE_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -567,6 +570,7 @@ export function useUtilizationByDiagnosis(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTILIZATION_DIAGNOSIS_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -652,6 +656,7 @@ export function useUtilizationByOrganization(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTIL_BY_ORG_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -700,6 +705,12 @@ const EMPTY_UTIL_BY_SERVICES_SUMMARY: UtilizationByServicesSummary = {
   average_service_cost: 0,
   most_used_service: "",
 }
+export type MonthlyStatisticsItem = {
+  month: number
+  month_name: string
+  year: number
+  services: Array<{ service_name: string; utilization: number }>
+}
 
 export function useUtilizationByServices(
   filters: UtilizationFilters = {},
@@ -714,7 +725,8 @@ export function useUtilizationByServices(
       ReportResponse<
         UtilizationByServicesSummary,
         UtilizationByServicesListItem,
-        UtilizationByServicesTopService
+        UtilizationByServicesTopService,
+        { monthly_statistics: MonthlyStatisticsItem[] }
       >
     > => {
       const page = filters.page ?? 1
@@ -736,7 +748,8 @@ export function useUtilizationByServices(
       const normalized = await fetchReport<
         UtilizationByServicesSummary,
         UtilizationByServicesListItem,
-        UtilizationByServicesTopService
+        UtilizationByServicesTopService,
+        { monthly_statistics: MonthlyStatisticsItem[] }
       >({
         endpoint: "fetch-utilization-by-services",
         body,
@@ -753,6 +766,11 @@ export function useUtilizationByServices(
           },
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
+          monthly_statistics: Array.isArray(
+            (normalized.data as any)?.monthly_statistics
+          )
+            ? (normalized.data as any).monthly_statistics
+            : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
         },
@@ -760,9 +778,8 @@ export function useUtilizationByServices(
     },
   })
 }
-
 /* ----------------------------
-   G) Utilization by Location (supports state_statistics)
+   G) Utilization by Location (INCLUDES state_statistics)
 ---------------------------- */
 
 export interface UtilizationByLocationStateStat {
@@ -803,9 +820,13 @@ const EMPTY_UTIL_BY_LOCATION_SUMMARY: UtilizationByLocationSummary = {
 
 export type UtilizationByLocationFilters = UtilizationFilters & {
   service?: string
-  location?: string
+  location?: string // IMPORTANT: should be state code like "FCT"
   scheme?: string
   plan?: string
+}
+
+type UtilByLocationExtra = {
+  state_statistics: UtilizationByLocationStateStat[]
 }
 
 export function useUtilizationByLocation(
@@ -822,12 +843,15 @@ export function useUtilizationByLocation(
         UtilizationByLocationSummary,
         UtilizationByLocationListItem,
         UtilizationByLocationTopService,
-        { state_statistics: UtilizationByLocationStateStat[] }
+        UtilByLocationExtra
       >
     > => {
       const page = filters.page ?? 1
       const limit = filters.limit ?? 20
 
+      // IMPORTANT:
+      // backend payload uses location values like "FCT".
+      // Make sure `filters.location` is the same (code), not "Abuja"/"Federal Capital Territory".
       const body = {
         page,
         limit,
@@ -842,13 +866,14 @@ export function useUtilizationByLocation(
         service: filters.service ?? "",
         location: filters.location ?? "",
         scheme: filters.scheme ?? "",
+        plan_filter: (filters as any).plan_filter ?? "", // harmless if ignored
       }
 
       const normalized = await fetchReport<
         UtilizationByLocationSummary,
         UtilizationByLocationListItem,
         UtilizationByLocationTopService,
-        { state_statistics: UtilizationByLocationStateStat[] }
+        UtilByLocationExtra
       >({
         endpoint: "fetch-utilization-by-location",
         body,
@@ -859,6 +884,7 @@ export function useUtilizationByLocation(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTIL_BY_LOCATION_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -910,7 +936,20 @@ const EMPTY_UTIL_BY_PROVIDER_SUMMARY: UtilizationByProviderSummary = {
   total_requests: 0,
   average_approval_rate: 0,
 }
+export type ProviderMonthlyStat = {
+  month: number
+  month_name: string
+  year: number
+  request_count: number
+  request_amount: number
+}
 
+export type ProviderTopProvider = {
+  provider_name: string
+  total_claims: number
+  provider_code?: string
+  logo_url?: string
+}
 export function useUtilizationByProvider(
   filters: UtilizationFilters = {},
   options?: Pick<UseQueryOptions<any>, "enabled">
@@ -924,7 +963,11 @@ export function useUtilizationByProvider(
       ReportResponse<
         UtilizationByProviderSummary,
         UtilizationByProviderListItem,
-        UtilizationByProviderTopService
+        UtilizationByProviderTopService,
+        {
+          monthly_statistics: ProviderMonthlyStat[]
+          top_providers: ProviderTopProvider[]
+        }
       >
     > => {
       const page = filters.page ?? 1
@@ -957,12 +1000,21 @@ export function useUtilizationByProvider(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTIL_BY_PROVIDER_SUMMARY,
             ...(normalized.data?.summary ?? {}),
           },
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
+          monthly_statistics: Array.isArray(
+            (normalized.data as any)?.monthly_statistics
+          )
+            ? (normalized.data as any).monthly_statistics
+            : [],
+          top_providers: Array.isArray((normalized.data as any)?.top_providers)
+            ? (normalized.data as any).top_providers
+            : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
         },
@@ -984,7 +1036,17 @@ export interface UtilizationBySchemeListItem {
 export interface UtilizationBySchemeTopService {
   [key: string]: any
 }
-
+export type SchemeMonthlyStat = {
+  month: number
+  month_name: string
+  year: number
+  schemes: Array<{
+    scheme: string
+    enrolee_count: number | null
+    total_cost?: number | null
+    total_requests?: number | null
+  }>
+}
 const EMPTY_UTIL_BY_SCHEME_SUMMARY: UtilizationBySchemeSummary = {}
 
 export function useUtilizationByScheme(
@@ -1000,7 +1062,8 @@ export function useUtilizationByScheme(
       ReportResponse<
         UtilizationBySchemeSummary,
         UtilizationBySchemeListItem,
-        UtilizationBySchemeTopService
+        UtilizationBySchemeTopService,
+        { monthly_statistics: SchemeMonthlyStat[] }
       >
     > => {
       const page = filters.page ?? 1
@@ -1022,7 +1085,8 @@ export function useUtilizationByScheme(
       const normalized = await fetchReport<
         UtilizationBySchemeSummary,
         UtilizationBySchemeListItem,
-        UtilizationBySchemeTopService
+        UtilizationBySchemeTopService,
+        { monthly_statistics: SchemeMonthlyStat[] }
       >({
         endpoint: "fetch-utilization-by-scheme",
         body,
@@ -1033,12 +1097,18 @@ export function useUtilizationByScheme(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTIL_BY_SCHEME_SUMMARY,
             ...(normalized.data?.summary ?? {}),
           },
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
+          monthly_statistics: Array.isArray(
+            (normalized.data as any)?.monthly_statistics
+          )
+            ? (normalized.data as any).monthly_statistics
+            : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
         },
@@ -1133,6 +1203,7 @@ export function useOverdueReport(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_OVERDUE_SUMMARY,
             ...(normalized.data?.summary ?? {}),

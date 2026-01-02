@@ -54,23 +54,6 @@ function mapApiToRow(
   }
 }
 
-/** Backend: data.state_statistics[] */
-type LocationStateStat = {
-  state: string
-  provider_count: number
-  enrolee_count: number
-  total_utilization: number
-}
-
-/** What PerformanceByLocationCard expects */
-type PerfLocationDatum = {
-  id: string
-  location: string
-  providers: number
-  enrollees: number
-  utilization: number
-}
-
 export function UtilizationByLocationView() {
   const { q } = useReportQuery()
   const { setConfig } = useReportExport()
@@ -78,16 +61,13 @@ export function UtilizationByLocationView() {
   const [range, setRange] = React.useState<RangeKey>("month")
   const [page, setPage] = React.useState(1)
 
-  // wire to ReportShell date pickers when ready
-  const [startDate] = React.useState("")
-  const [endDate] = React.useState("")
-
   const [filters, setFilters] = React.useState<LocationFilters>({
     service: "all",
     location: "all",
     scheme: "all",
     plan: "all",
-    dateRange: "may-sep-2025",
+    startDate: null,
+    endDate: null,
     costRange: "all",
   })
 
@@ -100,12 +80,13 @@ export function UtilizationByLocationView() {
     () => ({
       page,
       limit: PAGE_SIZE,
-      start_date: startDate,
-      end_date: endDate,
+
+      start_date: filters.startDate ?? "",
+      end_date: filters.endDate ?? "",
+
       min_cost: cost.min_cost,
       max_cost: cost.max_cost,
 
-      // if backend supports these, pass them (else ignored)
       service: filters.service !== "all" ? filters.service : "",
       location: filters.location !== "all" ? filters.location : "",
       scheme: filters.scheme !== "all" ? filters.scheme : "",
@@ -113,8 +94,8 @@ export function UtilizationByLocationView() {
     }),
     [
       page,
-      startDate,
-      endDate,
+      filters.startDate,
+      filters.endDate,
       cost.min_cost,
       cost.max_cost,
       filters.service,
@@ -141,7 +122,7 @@ export function UtilizationByLocationView() {
 
     let mapped = apiList.map((it, i) => mapApiToRow(it, i))
 
-    // global search
+    // global search (frontend)
     const s = q.trim().toLowerCase()
     if (s) {
       mapped = mapped.filter((r) =>
@@ -154,7 +135,7 @@ export function UtilizationByLocationView() {
     return mapped
   }, [apiList, q])
 
-  // export (stable)
+  // Export (stable)
   const rowsRef = React.useRef<UtilizationLocationRow[] | null>(null)
 
   React.useEffect(() => {
@@ -166,28 +147,15 @@ export function UtilizationByLocationView() {
       sheetName: "Utilization by Location",
       format: "xlsx",
       columns: [
-        {
-          header: "Location",
-          value: (r: UtilizationLocationRow) => r.location,
-        },
-        { header: "Scheme", value: (r: UtilizationLocationRow) => r.scheme },
-        {
-          header: "Provider",
-          value: (r: UtilizationLocationRow) => r.provider,
-        },
-        { header: "Plan", value: (r: UtilizationLocationRow) => r.plan },
-        {
-          header: "Claims Cover",
-          value: (r: UtilizationLocationRow) => fmtNaira(r.claimsCover),
-        },
-        {
-          header: "No. of Enrollees",
-          value: (r: UtilizationLocationRow) => r.enrolleeCount,
-        },
+        { header: "Location", value: (r) => r.location },
+        { header: "Scheme", value: (r) => r.scheme },
+        { header: "Provider", value: (r) => r.provider },
+        { header: "Plan", value: (r) => r.plan },
+        { header: "Claims Cover", value: (r) => fmtNaira(r.claimsCover) },
+        { header: "No. of Enrollees", value: (r) => r.enrolleeCount },
         {
           header: "Approved Claims Amount",
-          value: (r: UtilizationLocationRow) =>
-            fmtNaira(r.approvedClaimsAmount),
+          value: (r) => fmtNaira(r.approvedClaimsAmount),
         },
       ],
       rows: () => rows,
@@ -200,16 +168,17 @@ export function UtilizationByLocationView() {
     const stats = utilQuery.data?.data?.state_statistics
     if (!Array.isArray(stats)) return []
 
-    return stats.map((s, i) => ({
+    return stats.map((s: any, i: number) => ({
       id: `${s.state}-${i}`,
-      location: s.state, // your card expects "location" label
+      location: String(s.state ?? "—"),
       providers: toNumber(s.provider_count),
       enrollees: toNumber(s.enrolee_count),
       utilization: toNumber(s.total_utilization),
     }))
   }, [utilQuery.data?.data?.state_statistics])
+  const fromLabel = filters.startDate ?? "—"
+  const toLabel = filters.endDate ?? "—"
 
-  console.log(" utilQuery.data?.data?", utilQuery.data?.data)
   return (
     <div className="w-full">
       <LocationFiltersRow
@@ -232,8 +201,8 @@ export function UtilizationByLocationView() {
         error={
           utilQuery.isError ? (utilQuery.error as Error)?.message : undefined
         }
-        fromLabel={"—"}
-        toLabel={"—"}
+        fromLabel={fromLabel}
+        toLabel={toLabel}
       />
 
       <div className="px-6 py-6">

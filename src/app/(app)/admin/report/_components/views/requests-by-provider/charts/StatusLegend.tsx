@@ -9,7 +9,7 @@ type Props = {
 export function Square({ color }: { color: string }) {
   return (
     <span
-      className="inline-block h-4 w-4 rounded-[4px]"
+      className="inline-block h-4 w-4 rounded-[4px] shrink-0"
       style={{ background: color }}
     />
   )

@@ -1,5 +1,6 @@
 "use client"
 
+import { LOCATION_OPTIONS } from "@/lib/data"
 import * as React from "react"
 import { PillSelect } from "../../PillSelect"
 
@@ -22,14 +23,6 @@ const SERVICE_OPTIONS = [
   { label: "Outpatient", value: "outpatient" },
   { label: "Labs", value: "labs" },
   { label: "Pharmacy", value: "pharmacy" },
-]
-
-const LOCATION_OPTIONS = [
-  { label: "Location", value: "" },
-  { label: "Abuja", value: "abuja" },
-  { label: "Lagos", value: "lagos" },
-  { label: "Kano", value: "kano" },
-  { label: "Rivers", value: "rivers" },
 ]
 
 const SCHEME_OPTIONS = [

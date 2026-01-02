@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { PillSelect } from "../../PillSelect"
+import { LOCATION_OPTIONS } from "@/lib/data"
 
 export type OverdueFilters = {
   service: string
@@ -21,13 +22,6 @@ const SERVICE_OPTIONS = [
   { label: "Consultation", value: "consultation" },
   { label: "Pharmacy", value: "pharmacy" },
   { label: "Labs", value: "labs" },
-]
-
-const LOCATION_OPTIONS = [
-  { label: "Location", value: "__all__" },
-  { label: "Abuja", value: "abuja" },
-  { label: "Lagos", value: "lagos" },
-  { label: "Kano", value: "kano" },
 ]
 
 const SCHEME_OPTIONS = [

@@ -1,15 +1,18 @@
-// src/app/(app)/admin/report/_components/views/utilization-by-location/LocationFiltersRow.tsx
 "use client"
 
 import * as React from "react"
 import { PillSelect } from "../../PillSelect"
+import { useSchemes, usePlansByScheme } from "@/lib/api/schemes"
+import { DateRangePicker } from "@/components/filters/date-range"
+import { LOCATION_OPTIONS } from "@/lib/data"
 
 export type LocationFilters = {
   service: string
   location: string
   scheme: string
   plan: string
-  dateRange: string
+  startDate: string | null
+  endDate: string | null
   costRange: string
 }
 
@@ -26,42 +29,6 @@ const SERVICE_OPTIONS = [
   { label: "Pharmacy", value: "pharmacy" },
 ]
 
-const LOCATION_OPTIONS = [
-  { label: "Location", value: "all" },
-  { label: "Abuja", value: "abuja" },
-  { label: "Abia", value: "abia" },
-  { label: "Anambra", value: "anambra" },
-  { label: "Adamawa", value: "adamawa" },
-  { label: "Akwa Ibom", value: "akwa-ibom" },
-  { label: "Bauchi", value: "bauchi" },
-  { label: "Lagos", value: "lagos" },
-  { label: "Rivers", value: "rivers" },
-  { label: "Kano", value: "kano" },
-  { label: "Kaduna", value: "kaduna" },
-]
-
-const SCHEME_OPTIONS = [
-  { label: "Schemes", value: "all" },
-  { label: "NHIS", value: "nhis" },
-  { label: "PHIS", value: "phis" },
-  { label: "TSHIP", value: "tship" },
-  { label: "NYSC", value: "nysc" },
-]
-
-const PLAN_OPTIONS = [
-  { label: "Plan", value: "all" },
-  { label: "Platinum", value: "platinum" },
-  { label: "Gold", value: "gold" },
-  { label: "Silver", value: "silver" },
-]
-
-const DATE_RANGE_OPTIONS = [
-  { label: "Date Range", value: "may-sep-2025" },
-  { label: "May, 2025 - Sep, 2025", value: "may-sep-2025" },
-  { label: "Jan, 2025 - Jun, 2025", value: "jan-jun-2025" },
-  { label: "All time", value: "all" },
-]
-
 const COST_RANGE_OPTIONS = [
   { label: "Cost Range", value: "all" },
   { label: "₦0 - ₦100,000", value: "0-100k" },
@@ -70,18 +37,62 @@ const COST_RANGE_OPTIONS = [
   { label: "₦1,000,000+", value: "1m+" },
 ]
 
+function ensureAll(v?: string) {
+  return v && String(v).trim() ? String(v) : "all"
+}
+
 export function LocationFiltersRow({ value, onChange }: Props) {
   const [filters, setFilters] = React.useState<LocationFilters>({
-    service: value?.service ?? "all",
-    location: value?.location ?? "all",
-    scheme: value?.scheme ?? "all",
-    plan: value?.plan ?? "all",
-    dateRange: value?.dateRange ?? "may-sep-2025",
-    costRange: value?.costRange ?? "all",
+    service: ensureAll(value?.service),
+    location: ensureAll(value?.location),
+    scheme: ensureAll(value?.scheme),
+    plan: ensureAll(value?.plan),
+    startDate: value?.startDate ?? null,
+    endDate: value?.endDate ?? null,
+    costRange: ensureAll(value?.costRange),
   })
+
+  // Fetch schemes + plans
+  const schemesQuery = useSchemes()
+  const schemeId = filters.scheme !== "all" ? Number(filters.scheme) : undefined
+  const plansQuery = usePlansByScheme(schemeId)
+
+  // Options from backend
+  const SCHEME_OPTIONS = React.useMemo(() => {
+    const base = [{ label: "Schemes", value: "all" }]
+    const schemes = schemesQuery.data ?? []
+    const mapped = schemes.map((s: any) => ({
+      label: String(s.name ?? s.scheme_name ?? "—"),
+      value: String(s.id),
+    }))
+    return [...base, ...mapped]
+  }, [schemesQuery.data])
+
+  const PLAN_OPTIONS = React.useMemo(() => {
+    const base = [{ label: "Plan", value: "all" }]
+    const plans = plansQuery.data ?? []
+    const mapped = plans.map((p: any) => ({
+      label: String(p.name ?? "—"),
+      value: String(p.id),
+    }))
+    return [...base, ...mapped]
+  }, [plansQuery.data])
 
   function patch<K extends keyof LocationFilters>(k: K, v: LocationFilters[K]) {
     const next = { ...filters, [k]: v }
+    setFilters(next)
+    onChange?.(next)
+  }
+
+  function patchScheme(nextScheme: string) {
+    // reset plan when scheme changes
+    const next = { ...filters, scheme: nextScheme, plan: "all" }
+    setFilters(next)
+    onChange?.(next)
+  }
+
+  function patchDateRange(start: string | null, end: string | null) {
+    const next = { ...filters, startDate: start, endDate: end }
     setFilters(next)
     onChange?.(next)
   }
@@ -95,31 +106,33 @@ export function LocationFiltersRow({ value, onChange }: Props) {
           onChange={(v) => patch("service", v)}
           options={SERVICE_OPTIONS}
         />
+
         <PillSelect
           label="Location"
           value={filters.location}
           onChange={(v) => patch("location", v)}
           options={LOCATION_OPTIONS}
         />
+
         <PillSelect
           label="Schemes"
           value={filters.scheme}
-          onChange={(v) => patch("scheme", v)}
+          onChange={(v) => patchScheme(v)}
           options={SCHEME_OPTIONS}
         />
+
         <PillSelect
           label="Plan"
           value={filters.plan}
           onChange={(v) => patch("plan", v)}
           options={PLAN_OPTIONS}
         />
-        <PillSelect
-          label="Date Range"
-          value={filters.dateRange}
-          onChange={(v) => patch("dateRange", v)}
-          options={DATE_RANGE_OPTIONS}
-          className="w-[170px]"
+
+        <DateRangePicker
+          onChange={(start, end) => patchDateRange(start, end)}
+          triggerClassName="w-[170px]"
         />
+
         <PillSelect
           label="Cost Range"
           value={filters.costRange}

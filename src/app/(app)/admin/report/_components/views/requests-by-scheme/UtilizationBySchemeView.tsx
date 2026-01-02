@@ -142,7 +142,8 @@ export function UtilizationBySchemeView() {
     }),
     [page, startDate, endDate, cost.min_cost, cost.max_cost, filters]
   )
-  const reqQuery = useUtilizationByScheme(apiFilters)
+
+  const reqQuery = useUtilizationByScheme(apiFilters as any)
 
   const pagination = reqQuery.data?.data?.pagination
   const summary = reqQuery.data?.data?.summary
@@ -157,13 +158,11 @@ export function UtilizationBySchemeView() {
 
     let mapped = apiList.map((it, i) => mapApiToUtilSchemeRow(it, i))
 
-    // Search (enrollee name)
     const s = normalizeText(q)
     if (s) {
       mapped = mapped.filter((r) => normalizeText(r.enrolleeName).includes(s))
     }
 
-    // UI-side scheme filter (map code -> expected label, else compare raw)
     if (filters.scheme !== "__all__") {
       const expected = normalizeText(
         SCHEME_VALUE_TO_LABEL[filters.scheme] ?? filters.scheme
@@ -171,7 +170,6 @@ export function UtilizationBySchemeView() {
       mapped = mapped.filter((r) => normalizeText(r.schemeLabel) === expected)
     }
 
-    // UI-side plan filter (map code -> expected label, else compare raw)
     if (filters.plan !== "__all__") {
       const expected = normalizeText(
         PLAN_VALUE_TO_LABEL[filters.plan] ?? filters.plan
@@ -179,7 +177,6 @@ export function UtilizationBySchemeView() {
       mapped = mapped.filter((r) => normalizeText(r.planLabel) === expected)
     }
 
-    // service/location/costRange not in payload yet; they’re already applied to API request
     return mapped
   }, [apiList, q, filters.scheme, filters.plan])
 
@@ -215,8 +212,41 @@ export function UtilizationBySchemeView() {
     return () => setConfig(null)
   }, [rows, setConfig])
 
-  // Chart: keep empty until you share API series for top schemes
-  const topSchemesSeries = React.useMemo(() => [], [])
+  // ✅ REAL backend → chart points
+  const topSchemesSeries = React.useMemo(() => {
+    const ms = (reqQuery.data?.data as any)?.monthly_statistics
+    if (!Array.isArray(ms) || !ms.length) return []
+
+    // Collect all scheme names across all months (so keys are stable)
+    const allSchemes = new Set<string>()
+    for (const monthRow of ms) {
+      const schemes = Array.isArray(monthRow?.schemes) ? monthRow.schemes : []
+      for (const s of schemes) allSchemes.add(String(s?.scheme ?? "").trim())
+    }
+    const schemeKeys = Array.from(allSchemes).filter(Boolean)
+
+    // Month label helper: "December" -> "Dec"
+    const shortMonth = (name: string) => String(name ?? "").slice(0, 3)
+
+    // Build points: { m: "Dec", NHIS: 1, GIFSHIP: 1 }
+    return ms.map((monthRow: any, idx: number) => {
+      const point: any = {
+        m: shortMonth(monthRow?.month_name ?? `M${idx + 1}`),
+      }
+
+      // init zeros for all scheme keys
+      for (const k of schemeKeys) point[k] = 0
+
+      const schemes = Array.isArray(monthRow?.schemes) ? monthRow.schemes : []
+      for (const s of schemes) {
+        const key = String(s?.scheme ?? "").trim()
+        if (!key) continue
+        point[key] = toNumber(s?.enrolee_count ?? 0)
+      }
+
+      return point
+    })
+  }, [reqQuery.data?.data])
 
   return (
     <div className="w-full">
