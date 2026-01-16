@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
-import Label from "@/components/form/label";
-import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import Label from "@/components/form/label"
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -19,36 +19,53 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import {
   useProcessClaim,
   useRequestDetails,
   useSubmitRequest,
-} from "@/lib/api/requests";
-import * as React from "react";
-import { toast } from "sonner";
-import type { RequestItem, RequestStatus } from "./types";
-import { STATUS_BADGE, STATUS_LABEL } from "./types";
+} from "@/lib/api/requests"
+import * as React from "react"
+import { toast } from "sonner"
+import type { RequestItem, RequestStatus } from "./types"
+import { STATUS_BADGE, STATUS_LABEL } from "./types"
+
+/* -------------------------------------------------------------------------- */
+/*                      DEFINE MISSING API TYPES                        */
+/* -------------------------------------------------------------------------- */
+
+type RequestDetailsApiResponse = {
+  status?: boolean | string | number
+  message?: string
+  data?: {
+    claim?: any
+    enrolee?: any
+    services?: any[]
+    summary?: any
+    [k: string]: any
+  }
+  [k: string]: any
+}
 
 /* -------------------------------------------------------------------------- */
 /*                               HELPER: AGE FROM DOB                         */
 /* -------------------------------------------------------------------------- */
 
 function calculateAge(dob: string | null | undefined): string | undefined {
-  if (!dob) return undefined;
-  const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return undefined;
+  if (!dob) return undefined
+  const birth = new Date(dob)
+  if (Number.isNaN(birth.getTime())) return undefined
 
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-    age--;
+    age--
   }
-  if (age < 0) return undefined;
-  return `${age} years`;
+  if (age < 0) return undefined
+  return `${age} years`
 }
 
 /* -------------------------------------------------------------------------- */
@@ -56,31 +73,31 @@ function calculateAge(dob: string | null | undefined): string | undefined {
 /* -------------------------------------------------------------------------- */
 
 function mapClaimStatusToRequestStatus(
-  status: string | undefined | null,
+  status: string | undefined | null
 ): RequestStatus {
-  const s = (status ?? "").toLowerCase();
+  const s = (status ?? "").toLowerCase()
 
   switch (s) {
     case "pending":
-      return "pending";
+      return "pending"
     case "processed":
     case "approved":
-      return "resolved";
+      return "resolved"
     case "queried":
-      return "overdue";
+      return "overdue"
     default:
-      return "pending";
+      return "pending"
   }
 }
 
 type RequestDetailParams = {
-  claim_id?: number;
-  tracking_number?: string;
-};
+  claim_id?: number
+  tracking_number?: string
+}
 
 interface RequestDetailsProps {
-  requestId?: string;
-  selected?: RequestItem | null;
+  requestId?: string
+  selected?: RequestItem | null
 }
 
 /* -------------------------------------------------------------------------- */
@@ -88,96 +105,97 @@ interface RequestDetailsProps {
 /* -------------------------------------------------------------------------- */
 
 export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
-  const [reasonText, setReasonText] = React.useState("");
-  const [reasonError, setReasonError] = React.useState("");
-  const [assignedTo, setAssignedTo] = React.useState<string>("");
-  const processClaim = useProcessClaim();
-  const submitClaimRequest = useSubmitRequest();
+  const [reasonText, setReasonText] = React.useState("")
+  const [reasonError, setReasonError] = React.useState("")
+  const [assignedTo, setAssignedTo] = React.useState<string>("")
+  const processClaim = useProcessClaim()
+  const submitClaimRequest = useSubmitRequest()
 
   /* ------------------------------------------------------------------------ */
   /*           BUILD PARAMS FOR useRequestDetails (claim_id OR tracking)      */
   /* ------------------------------------------------------------------------ */
 
-  const claimKey = selected?.id ?? requestId; // "33" or "FE1C6E..." etc
-  const hasSelection = !!claimKey;
+  const claimKey = selected?.id ?? requestId // "33" or "FE1C6E..." etc
+  const hasSelection = Boolean(claimKey)
 
-  let detailParams: RequestDetailParams | undefined;
+  const detailParams: RequestDetailParams | undefined = React.useMemo(() => {
+    if (!claimKey) return undefined
+    const asNumber = Number(claimKey)
+    if (!Number.isNaN(asNumber)) return { claim_id: asNumber }
+    return { tracking_number: String(claimKey) }
+  }, [claimKey])
 
-  if (claimKey) {
-    const asNumber = Number(claimKey);
-    if (!Number.isNaN(asNumber)) {
-      detailParams = { claim_id: asNumber };
-    } else {
-      detailParams = { tracking_number: claimKey };
-    }
+  /* ------------------------------------------------------------------------ */
+  /*                    FIX: CALL useRequestDetails ONCE                      */
+  /*          (removed duplicate requestDetailsResult + undefined params)      */
+  /* ------------------------------------------------------------------------ */
+
+  const requestDetailsResult = useRequestDetails(detailParams) as {
+    data?: RequestDetailsApiResponse
+    isLoading?: boolean
+    error?: unknown
   }
 
-  const requestDetailsResult = useRequestDetails(
-    detailParams as RequestDetailParams | undefined,
-  ) as any;
+  const data = requestDetailsResult?.data
+  const isLoading: boolean = requestDetailsResult?.isLoading ?? false
+  const fetchError: unknown = requestDetailsResult?.error
+  const hasError = Boolean(fetchError)
 
-  const data = requestDetailsResult?.data;
-  const isLoading: boolean = requestDetailsResult?.isLoading ?? false;
-  const fetchError: unknown = requestDetailsResult?.error;
-  const hasError = Boolean(fetchError);
-
-  const apiDetail = data?.data;
-  const claim = apiDetail?.claim;
-  const enrollee = apiDetail?.enrolee;
-  const services = apiDetail?.services ?? [];
-  const summary = apiDetail?.summary;
-  const plan = claim?.plan;
-  const provider = claim?.provider;
+  const apiDetail = data?.data
+  const claim = apiDetail?.claim
+  const enrollee = apiDetail?.enrolee
+  const services = apiDetail?.services ?? []
+  const summary = apiDetail?.summary
+  const plan = claim?.plan
+  const provider = claim?.provider
 
   const totalAmount =
-    typeof summary?.total_amount === "number"
-      ? summary.total_amount
-      : undefined;
+    typeof summary?.total_amount === "number" ? summary.total_amount : undefined
 
-  const coverage = typeof plan?.premium === "number" ? plan.premium : undefined;
+  const coverage = typeof plan?.premium === "number" ? plan.premium : undefined
 
   const fullNameFromApi =
     `${enrollee?.first_name ?? ""} ${enrollee?.surname ?? ""}`.trim() ||
     enrollee?.enrolee_name ||
-    undefined;
+    undefined
 
   const genderFromApi = enrollee?.gender
     ? enrollee.gender.charAt(0).toUpperCase() + enrollee.gender.slice(1)
-    : undefined;
+    : undefined
 
-  const ageFromApi = calculateAge(enrollee?.dob);
+  const ageFromApi = calculateAge(enrollee?.dob)
 
-  const displayName = fullNameFromApi || selected?.name || "—";
-  const displayGender = genderFromApi || "—";
-  const displayAge = ageFromApi || "—";
+  const displayName = fullNameFromApi || selected?.name || "—"
+  const displayGender = genderFromApi || "—"
+  const displayAge = ageFromApi || "—"
 
-  const enrolleeNumber = enrollee?.enrolee_id || enrollee?.enrollee_id || "—";
+  const enrolleeNumber = enrollee?.enrolee_id || enrollee?.enrollee_id || "—"
 
-  const trackingNumber = claim?.tracking_number ?? claim?.id?.toString() ?? "—";
+  const trackingNumber = claim?.tracking_number ?? claim?.id?.toString() ?? "—"
 
-  const createdBy = provider?.name ?? "—";
+  const createdBy = provider?.name ?? "—"
 
-  const scheme = plan?.name ?? "—";
+  const scheme = plan?.name ?? "—"
 
-  const encounterDate = claim?.encounter_date ?? claim?.date_created ?? "—";
+  const encounterDate = claim?.encounter_date ?? claim?.date_created ?? "—"
 
-  const diagnoses = claim?.diagnosis ?? "—";
+  const diagnoses = claim?.diagnosis ?? "—"
 
   const bill =
-    totalAmount != null ? `NGN ${totalAmount.toLocaleString()}` : "NGN 0.00";
+    totalAmount != null ? `NGN ${totalAmount.toLocaleString()}` : "NGN 0.00"
 
   const utilization =
-    coverage != null ? `NGN ${coverage.toLocaleString()}` : "NGN 0.00";
+    coverage != null ? `NGN ${coverage.toLocaleString()}` : "NGN 0.00"
 
   const utilizationUsed =
     coverage && totalAmount != null
       ? `${Math.round((totalAmount / coverage) * 100)}%`
-      : "0%";
+      : "0%"
 
   const balanceLeft =
     coverage && totalAmount != null
       ? `NGN ${(coverage - totalAmount).toLocaleString()}`
-      : "NGN 0.00";
+      : "NGN 0.00"
 
   // include serviceId so we can call process-claim-service.php correctly
   const treatmentItems =
@@ -194,19 +212,19 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
             it.status === "approved"
               ? "Approved"
               : it.status === "pending"
-                ? "Approve"
-                : "Queried",
+              ? "Approve"
+              : "Queried",
         }))
-      : [];
+      : []
 
   const totalApprovedDisplay =
-    totalAmount != null ? `NGN ${totalAmount.toLocaleString()}` : "NGN 0.00";
+    totalAmount != null ? `NGN ${totalAmount.toLocaleString()}` : "NGN 0.00"
 
-  const statusFromClaim = mapClaimStatusToRequestStatus(claim?.status);
+  const statusFromClaim = mapClaimStatusToRequestStatus(claim?.status)
   const displayCode: RequestStatus =
-    statusFromClaim ?? selected?.requestStatus ?? "pending";
-  const displayLabel = STATUS_LABEL[displayCode];
-  const badgeClass = STATUS_BADGE[displayCode];
+    statusFromClaim ?? selected?.requestStatus ?? "pending"
+  const displayLabel = STATUS_LABEL[displayCode]
+  const badgeClass = STATUS_BADGE[displayCode]
 
   /* ------------------------------------------------------------------------ */
   /*                  PROCESS CLAIM: APPROVE / QUERY / SUBMIT                 */
@@ -215,15 +233,15 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
   const handleApproveService = async (
     serviceId: number | undefined,
     serviceName: string,
-    amount: string,
+    amount: string
   ) => {
     if (!claim?.id) {
-      toast.error("Missing claim id.");
-      return;
+      toast.error("Missing claim id.")
+      return
     }
     if (!serviceId) {
-      toast.error("Missing service id.");
-      return;
+      toast.error("Missing service id.")
+      return
     }
 
     try {
@@ -232,33 +250,33 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
         service_id: serviceId,
         status: "approved",
         notes: reasonText.trim(),
-      });
+      })
 
       toast.success(
-        `Service "${serviceName}" (${amount}) approved successfully.`,
-      );
-      setReasonText("");
+        `Service "${serviceName}" (${amount}) approved successfully.`
+      )
+      setReasonText("")
     } catch (err: any) {
-      toast.error(err?.message || "Failed to approve claim service.");
+      toast.error(err?.message || "Failed to approve claim service.")
     }
-  };
+  }
 
   const handleQueryService = async (
     serviceId: number | undefined,
     serviceName: string,
-    amount: string,
+    amount: string
   ) => {
     if (!reasonText.trim()) {
-      setReasonError("Please provide a reason.");
-      return;
+      setReasonError("Please provide a reason.")
+      return
     }
     if (!claim?.id) {
-      toast.error("Missing claim id.");
-      return;
+      toast.error("Missing claim id.")
+      return
     }
     if (!serviceId) {
-      toast.error("Missing service id.");
-      return;
+      toast.error("Missing service id.")
+      return
     }
 
     try {
@@ -267,34 +285,34 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
         service_id: serviceId,
         status: "queried",
         notes: reasonText.trim(),
-      });
+      })
 
-      toast.success(`Service "${serviceName}" (${amount}) marked as queried.`);
-      setReasonText("");
-      setReasonError("");
+      toast.success(`Service "${serviceName}" (${amount}) marked as queried.`)
+      setReasonText("")
+      setReasonError("")
     } catch (err: any) {
-      toast.error(err?.message || "Failed to query claim service.");
+      toast.error(err?.message || "Failed to query claim service.")
     }
-  };
+  }
 
   // Footer "Submit" → approve all pending services
   const onProcessClaimSubmit = async () => {
     if (!claim?.id) {
-      toast.error("Missing claim id.");
-      return;
+      toast.error("Missing claim id.")
+      return
     }
 
     try {
       await submitClaimRequest.mutateAsync({
         claim_id: claim.id,
-      });
+      })
 
-      toast.success("This claim has been submitted successfully");
-      setReasonText("");
+      toast.success("This claim has been submitted successfully")
+      setReasonText("")
     } catch (err: any) {
-      toast.error(err?.message || "Failed to submit claim.");
+      toast.error(err?.message || "Failed to submit claim.")
     }
-  };
+  }
 
   /* ------------------------------------------------------------------------ */
   /*                           EMPTY-STATE RENDER                             */
@@ -307,7 +325,7 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
           Select a request from the left panel to view its details.
         </p>
       </div>
-    );
+    )
   }
 
   /* ------------------------------------------------------------------------ */
@@ -438,116 +456,114 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
               </TableHeader>
 
               <TableBody>
-                {treatmentItems.map((item: any) => {
-                  return (
-                    <TableRow key={item.id} className="border-b">
-                      <TableCell>{item.service}</TableCell>
-                      <TableCell className="text-right">{item.qty}</TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell className="text-right">
-                        {item.submittedBill}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {item.action === "Approve" && (
-                          <div className="flex items-center gap-[11px] justify-center">
-                            {/* APPROVE SERVICE */}
-                            <ConfirmDialog
-                              variant="info"
-                              title="Confirm Claim Approval"
-                              confirmText="Approve"
-                              trigger={
-                                <Button className="hover:text-[#1671D9] hover:bg-[#EDF5FF]">
-                                  Approve
-                                </Button>
-                              }
-                              description={
-                                <div className="flex flex-col gap-2">
-                                  <Label>Note</Label>
-                                  <Textarea
-                                    value={reasonText}
-                                    onChange={(e) => {
-                                      setReasonText(e.target.value);
-                                      if (reasonError) setReasonError("");
-                                    }}
-                                    className="bg-[#F8F8F8]"
-                                  />
-                                  {reasonError && (
-                                    <span className="text-xs text-red-600">
-                                      {reasonError}
-                                    </span>
-                                  )}
-                                </div>
-                              }
-                              onConfirm={() =>
-                                handleApproveService(
-                                  item.serviceId as number,
-                                  item.service,
-                                  item.submittedBill,
-                                )
-                              }
-                            />
+                {treatmentItems.map((item: any) => (
+                  <TableRow key={item.id} className="border-b">
+                    <TableCell>{item.service}</TableCell>
+                    <TableCell className="text-right">{item.qty}</TableCell>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell className="text-right">
+                      {item.submittedBill}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.action === "Approve" && (
+                        <div className="flex items-center gap-[11px] justify-center">
+                          {/* APPROVE SERVICE */}
+                          <ConfirmDialog
+                            variant="info"
+                            title="Confirm Claim Approval"
+                            confirmText="Approve"
+                            trigger={
+                              <Button className="hover:text-[#1671D9] hover:bg-[#EDF5FF]">
+                                Approve
+                              </Button>
+                            }
+                            description={
+                              <div className="flex flex-col gap-2">
+                                <Label>Note</Label>
+                                <Textarea
+                                  value={reasonText}
+                                  onChange={(e) => {
+                                    setReasonText(e.target.value)
+                                    if (reasonError) setReasonError("")
+                                  }}
+                                  className="bg-[#F8F8F8]"
+                                />
+                                {reasonError && (
+                                  <span className="text-xs text-red-600">
+                                    {reasonError}
+                                  </span>
+                                )}
+                              </div>
+                            }
+                            onConfirm={() =>
+                              handleApproveService(
+                                item.serviceId as number,
+                                item.service,
+                                item.submittedBill
+                              )
+                            }
+                          />
 
-                            {/* QUERY SERVICE */}
-                            <ConfirmDialog
-                              title="Reason for Query"
-                              confirmText="Submit"
-                              trigger={
-                                <Button
-                                  variant="outline"
-                                  className="hover:bg-transparent hover:text-black"
-                                >
-                                  Query
-                                </Button>
-                              }
-                              description={
-                                <div className="space-y-2">
-                                  <p className="text-sm text-[#475367]">
-                                    Provide a reason for querying{" "}
-                                    <strong>{item.service}</strong> (
-                                    {item.submittedBill}).
-                                  </p>
-                                  <Label title="Reason for Query" />
-                                  <Textarea
-                                    value={reasonText}
-                                    onChange={(e) => {
-                                      setReasonText(e.target.value);
-                                      if (reasonError) setReasonError("");
-                                    }}
-                                    className="bg-[#F8F8F8]"
-                                  />
-                                  {reasonError && (
-                                    <span className="text-xs text-red-600">
-                                      {reasonError}
-                                    </span>
-                                  )}
-                                </div>
-                              }
-                              onConfirm={() =>
-                                handleQueryService(
-                                  item.serviceId as number,
-                                  item.service,
-                                  item.submittedBill,
-                                )
-                              }
-                            />
-                          </div>
-                        )}
+                          {/* QUERY SERVICE */}
+                          <ConfirmDialog
+                            title="Reason for Query"
+                            confirmText="Submit"
+                            trigger={
+                              <Button
+                                variant="outline"
+                                className="hover:bg-transparent hover:text-black"
+                              >
+                                Query
+                              </Button>
+                            }
+                            description={
+                              <div className="space-y-2">
+                                <p className="text-sm text-[#475367]">
+                                  Provide a reason for querying{" "}
+                                  <strong>{item.service}</strong> (
+                                  {item.submittedBill}).
+                                </p>
+                                <Label title="Reason for Query" />
+                                <Textarea
+                                  value={reasonText}
+                                  onChange={(e) => {
+                                    setReasonText(e.target.value)
+                                    if (reasonError) setReasonError("")
+                                  }}
+                                  className="bg-[#F8F8F8]"
+                                />
+                                {reasonError && (
+                                  <span className="text-xs text-red-600">
+                                    {reasonError}
+                                  </span>
+                                )}
+                              </div>
+                            }
+                            onConfirm={() =>
+                              handleQueryService(
+                                item.serviceId as number,
+                                item.service,
+                                item.submittedBill
+                              )
+                            }
+                          />
+                        </div>
+                      )}
 
-                        {item.action === "Queried" && (
-                          <Badge className="bg-[#F7F7F7] text-[#767676]">
-                            Queried
-                          </Badge>
-                        )}
+                      {item.action === "Queried" && (
+                        <Badge className="bg-[#F7F7F7] text-[#767676]">
+                          Queried
+                        </Badge>
+                      )}
 
-                        {item.action === "Approved" && (
-                          <Badge className="bg-[#ECFDF3] text-[#166534]">
-                            Approved
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                      {item.action === "Approved" && (
+                        <Badge className="bg-[#ECFDF3] text-[#166534]">
+                          Approved
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
 
                 <TableRow className="bg-[#E3EFFC42]">
                   <TableCell colSpan={3}>
@@ -639,5 +655,5 @@ export function RequestDetails({ requestId, selected }: RequestDetailsProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

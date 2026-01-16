@@ -4,9 +4,12 @@ import { apiClient } from "@/lib/api/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { SimpleApiResponse } from "./types"
 
-/* ========= Types ========= */
+/* ============================================================================
+  TYPES
+============================================================================ */
 
 export type RequestChannel = "all" | "email" | "whatsapp" | "chat"
+
 export type RequestStatusFilter =
   | "all"
   | "unread"
@@ -25,23 +28,6 @@ export interface RequestFilters {
   status?: RequestStatusFilter
 }
 
-export interface RequestListApiItem {
-  id: string | number
-  name?: string
-  full_name?: string
-  organisation?: string
-  organization?: string
-  company?: string
-  provider?: string
-  channel?: string
-  status?: string
-  read_status?: string
-  timestamp?: string
-  created_at?: string
-  request_status?: string
-  [key: string]: any
-}
-
 export interface RequestsPagination {
   current_page: number
   per_page: number
@@ -51,74 +37,24 @@ export interface RequestsPagination {
   has_prev: boolean
 }
 
-export interface RequestFilters {
-  search?: string
-  channel?: RequestChannel
-  status?: RequestStatusFilter
-  page?: number
-  limit?: number
-}
-
-export interface RequestsPagination {
-  current_page: number
-  per_page: number
-  total: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
-}
-
-export interface RequestFilters {
-  search?: string
-  channel?: RequestChannel
-  status?: RequestStatusFilter
-  page?: number
-  limit?: number
-}
-export interface RawRequestItem {
-  id: number
-  provider_id: number
-  enrolee_id: number
-  tracking_number: string
-  plan_id: number
-  channel: string
-  encounter_date: string
-  status: string
-  date_created: number
-  created_by: number
-  assigned_to: number | null
-  invoice_id: number | null
-  queried: number
-  processed: number
-  diagnosis: string
-  prescription: string | null
-  radiology: string | null
-  lab: string | null
-  enrolee_first_name: string
-  enrolee_surname: string
-  enrolee_code: string
-  enrolee_phone: string
-  enrolee_email: string
-  provider_name: string
-  plan_name: string
-  [key: string]: any
-}
-
-export interface RequestsPagination {
-  current_page: number
-  per_page: number
-  total: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
-}
-
-export interface RequestsApiResponse {
-  status: string // "success"
-  data?: RawRequestItem[]
+export interface RequestsApiResponse<T = any> {
+  status: "success" | "empty" | string
+  data?: T[]
   pagination?: RequestsPagination
   message?: string
   [key: string]: any
+}
+
+export interface RequestDetailsApiResponse {
+  status: string
+  data?: any
+  message?: string
+  [key: string]: any
+}
+
+export interface RequestDetailParams {
+  claim_id?: number
+  tracking_number?: string
 }
 
 export type ProcessClaimPayload = {
@@ -127,14 +63,28 @@ export type ProcessClaimPayload = {
   status: string
   notes: string
 }
+
 export type SubmitClaimRequestPayload = {
-  claim_id: string
+  claim_id: number
 }
 
-/* ============================
-   /fetch-requests.php
-============================ */
+/* ============================================================================
+  HELPERS
+============================================================================ */
 
+function normalizeFilterValue(v?: string) {
+  const t = String(v ?? "").trim()
+  if (!t || t === "all") return undefined // ✅ IMPORTANT: return undefined, not ""
+  return t
+}
+
+/* ============================================================================
+  HOOKS
+============================================================================ */
+
+/** =========================
+ *  LIST: /fetch-requests.php
+ *  ========================= */
 export function useRequests(filters: RequestFilters = {}) {
   return useQuery({
     queryKey: ["requests", filters],
@@ -143,34 +93,19 @@ export function useRequests(filters: RequestFilters = {}) {
         page: filters.page ?? 1,
         limit: filters.limit ?? 20,
         search: filters.search ?? "",
-        channel: filters.channel ?? "",
-        // if no status is given, don't filter by status (let backend return all)
-        status: filters.status ?? "",
+        channel: normalizeFilterValue(filters.channel), // ✅ undefined when "all"
+        status: normalizeFilterValue(filters.status), // ✅ undefined when "all"
       }
-      // const body = {
-      //   page: filters.page ?? 1,
-      //   limit: filters.limit ?? 20,
-      //   search: filters.search ?? "",
-      //   channel:
-      //     !filters.channel || filters.channel === "all"
-      //       ? ""
-      //       : String(filters.channel),
-      //   status:
-      //     !filters.status || filters.status === "all"
-      //       ? ""
-      //       : String(filters.status),
-      // }
 
       const res = await apiClient.post<RequestsApiResponse>(
         "/fetch-requests.php",
         body
       )
 
-      const payload = res.data
-      if (!payload) {
-        throw new Error("Failed to fetch requests")
-      }
+      const payload = res?.data
+      if (!payload) throw new Error("Failed to fetch requests")
 
+      // Normalize payload
       if (payload.status === "success") {
         return {
           ...payload,
@@ -200,35 +135,35 @@ export function useRequests(filters: RequestFilters = {}) {
     },
   })
 }
-/* ========= Detail: /fetch-request-details.php ========= */
 
-export interface RequestDetailsApiResponse {
-  status: string
-  data?: any
-  message?: string
-  [key: string]: any
-}
-interface RequestDetailParams {
-  claim_id?: number
-  tracking_number?: string
-}
-
+/** =========================
+ *  DETAILS: /fetch-request-details.php
+ *  ========================= */
 export function useRequestDetails(params?: RequestDetailParams) {
   const enabled = Boolean(params?.claim_id || params?.tracking_number)
 
-  return useQuery({
+  return useQuery<RequestDetailsApiResponse>({
     enabled,
     queryKey: ["request-detail", params?.claim_id, params?.tracking_number],
-    queryFn: async () => {
-      const res = await apiClient.post("/fetch-request-details.php", params)
+    queryFn: async (): Promise<RequestDetailsApiResponse> => {
+      const res = await apiClient.post<RequestDetailsApiResponse>(
+        "/fetch-request-details.php",
+        params
+      )
+
+      // ✅ Fix TS: res.data can be typed as possibly undefined in some wrappers
+      if (!res?.data) {
+        throw new Error("Failed to fetch request details")
+      }
+
       return res.data
     },
   })
 }
-/* ============================
-    Process claim 
-============================ */
 
+/** =========================
+ *  MUTATION: /process-claim-service.php
+ *  ========================= */
 export function useProcessClaim() {
   const queryClient = useQueryClient()
 
@@ -238,13 +173,15 @@ export function useProcessClaim() {
         "/process-claim-service.php",
         payload
       )
-      const apiResponse = response.data
 
-      if (!apiResponse || apiResponse.status !== "success") {
-        if (apiResponse?.status === "exist") {
+      const apiResponse = response?.data
+      if (!apiResponse) throw new Error("No response from server")
+
+      if (apiResponse.status !== "success") {
+        if ((apiResponse as any)?.status === "exist") {
           throw new Error("This claim service has already been processed")
         }
-        throw new Error(apiResponse?.message || "Failed to process claim")
+        throw new Error(apiResponse.message || "Failed to process claim")
       }
 
       return apiResponse
@@ -252,13 +189,14 @@ export function useProcessClaim() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requests"] })
       queryClient.invalidateQueries({ queryKey: ["request-detail"] })
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-requests"] })
     },
   })
 }
-/* ============================
-    Process claim 
-============================ */
 
+/** =========================
+ *  MUTATION: /complete-claim.php
+ *  ========================= */
 export function useSubmitRequest() {
   const queryClient = useQueryClient()
 
@@ -268,13 +206,15 @@ export function useSubmitRequest() {
         "/complete-claim.php",
         payload
       )
-      const apiResponse = response.data
 
-      if (!apiResponse || apiResponse.status !== "success") {
-        if (apiResponse?.status === "exist") {
+      const apiResponse = response?.data
+      if (!apiResponse) throw new Error("No response from server")
+
+      if (apiResponse.status !== "success") {
+        if ((apiResponse as any)?.status === "exist") {
           throw new Error("This claim request has already been processed")
         }
-        throw new Error(apiResponse?.message || "Failed to process claim")
+        throw new Error(apiResponse.message || "Failed to process claim")
       }
 
       return apiResponse
@@ -282,6 +222,45 @@ export function useSubmitRequest() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requests"] })
       queryClient.invalidateQueries({ queryKey: ["request-detail"] })
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-requests"] })
     },
+  })
+}
+
+/** =========================
+ *  LIST: /fetch-claims-requests.php  (WhatsApp)
+ *  ========================= */
+export function useWhatsappRequests(filters: {
+  page: number
+  limit: number
+  hospital_id?: string
+  enrolee_id?: string
+}) {
+  return useQuery({
+    queryKey: ["whatsapp-requests", filters],
+    queryFn: async (): Promise<RequestsApiResponse> => {
+      const res = await apiClient.post<RequestsApiResponse>(
+        "/fetch-claims-requests.php",
+        {
+          page: filters.page,
+          limit: filters.limit,
+          hospital_id: filters.hospital_id ?? "",
+          enrolee_id: filters.enrolee_id ?? "",
+        }
+      )
+
+      const payload = res?.data
+      if (!payload) throw new Error("Failed to fetch WhatsApp requests")
+
+      if (payload.status !== "success") {
+        throw new Error(payload.message || "Failed to fetch WhatsApp requests")
+      }
+
+      return {
+        ...payload,
+        data: Array.isArray(payload.data) ? payload.data : [],
+      }
+    },
+    staleTime: 30_000,
   })
 }
