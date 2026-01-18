@@ -40,6 +40,11 @@ const NAV: NavItem[] = [
     icon: MessageTextIcon,
     sublinks: [
       {
+        href: "/admin/requests/pre-auth",
+        label: "Pre-Auth Requests",
+        icon: RequestStatus,
+      },
+      {
         href: "/admin/requests/status",
         label: "Request status",
         icon: RequestStatus,

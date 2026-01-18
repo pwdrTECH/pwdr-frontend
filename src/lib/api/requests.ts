@@ -230,7 +230,7 @@ export function useSubmitRequest() {
 /** =========================
  *  LIST: /fetch-claims-requests.php  (WhatsApp)
  *  ========================= */
-export function useWhatsappRequests(filters: {
+export function useChannelsRequests(filters: {
   page: number
   limit: number
   hospital_id?: string

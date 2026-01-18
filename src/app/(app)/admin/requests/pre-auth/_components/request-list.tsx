@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { useChannelsRequests } from "@/lib/api/requests"
+import { useRequests } from "@/lib/api/requests"
 import { Search } from "lucide-react"
 import * as React from "react"
 import type { RequestItem } from "./types"
@@ -72,45 +72,54 @@ function formatUnixSeconds(sec: any): string {
 }
 
 /**
- * WhatsApp API → RequestItem
- * Assumes endpoint is fetch-claims-requests.php
+ * Generic Requests API → RequestItem
+ * This mapper works for mixed channels, as long as the record contains a "channel" or equivalent.
  */
-function mapWhatsappApiToItem(r: any): RequestItem {
-  const status: RequestItem["status"] =
-    Number(r?.processed ?? 0) === 1 ? "read" : "new"
+function mapRequestsApiToItem(r: any): RequestItem {
+  const rawChannel = lower(
+    pickStr(r?.channel, r?.provider, r?.source, r?.request_channel)
+  )
 
-  const rawStatus = lower(r?.status)
+  const provider: RequestItem["provider"] =
+    rawChannel === "whatsapp"
+      ? "whatsapp"
+      : rawChannel === "chat"
+      ? "chat"
+      : "email"
+
+  // read/new mapping supports multiple variants
+  const status: RequestItem["status"] =
+    lower(r?.read_status) === "read" || Number(r?.processed) === 1
+      ? "read"
+      : "new"
+
+  // request status supports multiple keys
+  const rawStatus = lower(pickStr(r?.status, r?.request_status))
   const requestStatus: RequestItem["requestStatus"] =
-    rawStatus === "queried"
-      ? "overdue"
-      : rawStatus === "processed" || rawStatus === "approved"
-      ? "resolved"
-      : rawStatus === "completed"
-      ? "completed"
-      : "pending"
+    (rawStatus as RequestItem["requestStatus"]) || "pending"
 
   const name = buildName(r)
 
   const organization =
-    pickStr(r?.provider_name, r?.plan_name, r?.organisation, r?.organization) ||
-    "—"
+    pickStr(
+      r?.provider_name,
+      r?.plan_name,
+      r?.organisation,
+      r?.organization,
+      r?.company
+    ) || "—"
 
   const timestamp =
     pickStr(
       r?.encounter_date,
       r?.timestamp,
+      r?.created_at,
       formatUnixSeconds(r?.date_created)
     ) || ""
 
-  // channel/provider from WA payload (often "whatsapp"), fallback to "whatsapp"
-  const channel = lower(r?.channel) || "whatsapp"
-
-  const provider: RequestItem["provider"] =
-    channel === "email" ? "email" : channel === "chat" ? "chat" : "whatsapp"
-
   return {
     id: String(r?.id ?? r?.claim_id ?? r?.tracking_number ?? ""),
-    name: name || "—",
+    name,
     organization,
     provider,
     status,
@@ -119,24 +128,14 @@ function mapWhatsappApiToItem(r: any): RequestItem {
   }
 }
 
-/**
- * Handle BOTH shapes safely:
- * A) result = { status, data: [...] }
- * B) result = { data: { status, data: [...] } } (axios-shaped mistakenly passed)
- */
 function extractRows(result: any): any[] {
   if (!result) return []
 
-  // if react-query gave the actual payload
   if (Array.isArray(result?.data)) return result.data
-
-  // if react-query gave axios-like { data: payload }
-  if (Array.isArray(result?.data?.data)) return result.data.data
-
   return []
 }
 
-export function RequestList({
+export function PreAuthRequestList({
   onSelectRequest,
   selectedRequestId,
 }: RequestListProps) {
@@ -152,43 +151,46 @@ export function RequestList({
   const page = 1
   const limit = 20
 
-  // ✅ ONLY WhatsApp endpoint used here
-  const whatsappQuery = useChannelsRequests({
+  const requestsQuery = useRequests({
+    search: searchTerm,
+    channel,
+    status:
+      activeTab === "overdue"
+        ? "overdue"
+        : activeTab === "resolved"
+        ? "resolved"
+        : activeTab === "unread"
+        ? "unread"
+        : "all",
     page,
     limit,
-    hospital_id: "",
-    enrolee_id: "",
   })
 
-  const isLoading = whatsappQuery.isLoading
-  const error = whatsappQuery.error
+  const isLoading = requestsQuery.isLoading
+  const error = requestsQuery.error
 
   const baseRequests: RequestItem[] = React.useMemo(() => {
-    const rows = extractRows(whatsappQuery.data)
-    return rows.map((r: any) => mapWhatsappApiToItem(r))
-  }, [whatsappQuery.data])
+    const rows = extractRows(requestsQuery.data)
+    return rows.map((r: any) => mapRequestsApiToItem(r))
+  }, [requestsQuery.data])
 
   const filteredRequests = React.useMemo(() => {
     let filtered = baseRequests
 
-    // Tabs
-    if (activeTab === "unread") {
+    // Tabs (client-side)
+    if (activeTab === "unread")
       filtered = filtered.filter((r) => r.status === "new")
-    }
-    if (activeTab === "overdue") {
+    if (activeTab === "overdue")
       filtered = filtered.filter((r) => r.requestStatus === "overdue")
-    }
-    if (activeTab === "resolved") {
+    if (activeTab === "resolved")
       filtered = filtered.filter((r) => r.requestStatus === "resolved")
-    }
 
     // Channel filter (client-side)
-    // ⚠️ Only works if WA endpoint includes channel info.
     if (channel !== "all") {
       filtered = filtered.filter((r) => r.provider === channel)
     }
 
-    // Search
+    // Search (client-side)
     if (searchTerm) {
       const q = searchTerm.toLowerCase()
       filtered = filtered.filter(
