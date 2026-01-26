@@ -99,7 +99,7 @@ export function useRequests(filters: RequestFilters = {}) {
 
       const res = await apiClient.post<RequestsApiResponse>(
         "/fetch-requests.php",
-        body
+        body,
       )
 
       const payload = res?.data
@@ -148,7 +148,7 @@ export function useRequestDetails(params?: RequestDetailParams) {
     queryFn: async (): Promise<RequestDetailsApiResponse> => {
       const res = await apiClient.post<RequestDetailsApiResponse>(
         "/fetch-request-details.php",
-        params
+        params,
       )
 
       // ✅ Fix TS: res.data can be typed as possibly undefined in some wrappers
@@ -171,7 +171,7 @@ export function useProcessClaim() {
     mutationFn: async (payload: ProcessClaimPayload) => {
       const response = await apiClient.post<SimpleApiResponse>(
         "/process-claim-service.php",
-        payload
+        payload,
       )
 
       const apiResponse = response?.data
@@ -204,7 +204,7 @@ export function useSubmitRequest() {
     mutationFn: async (payload: SubmitClaimRequestPayload) => {
       const response = await apiClient.post<SimpleApiResponse>(
         "/complete-claim.php",
-        payload
+        payload,
       )
 
       const apiResponse = response?.data
@@ -240,13 +240,13 @@ export function useChannelsRequests(filters: {
     queryKey: ["whatsapp-requests", filters],
     queryFn: async (): Promise<RequestsApiResponse> => {
       const res = await apiClient.post<RequestsApiResponse>(
-        "/fetch-claims-requests.php",
+        "/fetch-channel-requests.php",
         {
           page: filters.page,
           limit: filters.limit,
           hospital_id: filters.hospital_id ?? "",
           enrolee_id: filters.enrolee_id ?? "",
-        }
+        },
       )
 
       const payload = res?.data

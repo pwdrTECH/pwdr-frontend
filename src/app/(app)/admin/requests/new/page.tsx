@@ -9,7 +9,7 @@ import {
   Search,
 } from "lucide-react"
 import * as React from "react"
-import { Controller, useFieldArray, useForm } from "react-hook-form"
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -30,7 +30,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-
 import {
   Command,
   CommandEmpty,
@@ -44,6 +43,7 @@ import { CalendarAltIcon, MinusIcon } from "@/components/svgs"
 import { useBeneficiaries } from "@/lib/api/beneficiaries"
 import { usePlanDetails, usePlansByScheme, useSchemes } from "@/lib/api/schemes"
 import { useCreateNewClaim } from "@/lib/api/claims"
+import { useProviders } from "@/lib/api/provider"
 
 /* -----------------------------
 helpers
@@ -52,6 +52,7 @@ function qtyToNumber(qty: string) {
   const m = String(qty || "").match(/\d+/)
   return m ? Number(m[0]) : 0
 }
+
 function pickStr(...vals: any[]) {
   for (const v of vals) {
     const s = String(v ?? "").trim()
@@ -125,12 +126,13 @@ Zod Validation Schema
 ----------------------------- */
 const ServiceItemSchema = z.object({
   serviceId: z.string().min(1, "Service is required"),
-  serviceName: z.string(),
+  serviceName: z.string(), // keep required
   qty: z.string().min(1, "Quantity is required"),
   rate: z.number().min(0),
 })
 
 const NewClaimFormSchema = z.object({
+  providerId: z.string().min(1, "Provider is required"), // ✅ provider select
   diagnosis: z.array(z.string()).min(1, "Select at least one diagnosis"),
   encounterDate: z.string().min(1, "Encounter date is required"),
   services: z.array(ServiceItemSchema).min(1, "Add at least one service"),
@@ -216,16 +218,8 @@ function MultiSelect({
 }
 
 /* -----------------------------
-Treatment items
+Quantity options (UNCHANGED)
 ----------------------------- */
-type TreatmentRow = {
-  id: string
-  serviceId: string
-  serviceName: string
-  qty: string
-  rate: number
-}
-
 const DEFAULT_QTY_OPTIONS: Option[] = [
   { label: "1Hr", value: "1Hr" },
   { label: "1Tb", value: "1Tb" },
@@ -246,10 +240,6 @@ export default function NewRequestsPage() {
     makeRequestId(),
   )
   const [files, setFiles] = React.useState<File[]>([])
-  const [rows, setRows] = React.useState<TreatmentRow[]>([
-    { id: "1", serviceId: "", serviceName: "", qty: "", rate: 0 },
-    { id: "2", serviceId: "", serviceName: "", qty: "", rate: 0 },
-  ])
 
   const createClaimMutation = useCreateNewClaim()
 
@@ -262,18 +252,44 @@ export default function NewRequestsPage() {
   const beneficiariesQuery = useBeneficiaries({
     search: debounced,
     page: 1,
-    limit: 10,
+    limit: 100,
   })
-
+  console.log("selectedBeneficiary", selectedBeneficiary)
   const beneficiaries = React.useMemo(
     () => normalizeRows(beneficiariesQuery.data),
     [beneficiariesQuery.data],
   )
 
-  // Initialize react-hook-form
+  // ✅ Providers from API
+  // (Adjust params to match your hook signature if needed)
+  const providersQuery = useProviders({
+    page: 1,
+    limit: 200,
+    search: "",
+  } as any)
+  const providers = React.useMemo(
+    () => normalizeRows(providersQuery.data),
+    [providersQuery.data],
+  )
+
+  const PROVIDER_OPTIONS: Option[] = React.useMemo(() => {
+    return providers
+      .map((p: any) => {
+        const id = pickStr(p?.id, p?.provider_id, p?.hmo_id)
+        const name = pickStr(p?.name, p?.provider_name, p?.hmo_name, p?.title)
+        if (!id) return null
+        return {
+          value: String(id),
+          label: name ? String(name) : `Provider ${id}`,
+        }
+      })
+      .filter(Boolean) as Option[]
+  }, [providers])
+
+  const providersLoading = providersQuery?.isLoading
+
   const {
     control,
-    watch,
     reset,
     setValue,
     handleSubmit,
@@ -281,25 +297,26 @@ export default function NewRequestsPage() {
   } = useForm<NewClaimFormData>({
     resolver: zodResolver(NewClaimFormSchema),
     defaultValues: {
+      providerId: "",
       diagnosis: [],
       encounterDate: todayISO(),
-      services: rows,
+      services: [
+        { serviceId: "", serviceName: "", qty: "", rate: 0 },
+        { serviceId: "", serviceName: "", qty: "", rate: 0 },
+      ],
     },
   })
 
-  const formValues = watch()
-  const rowsForm = formValues.services || []
-
-  const { append, remove } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: "services",
   })
 
-  /* ------------------------------------------------------------------
-   SERVICES: derive from beneficiary -> scheme_id/plan_id -> plan details
-  ------------------------------------------------------------------ */
+  const rowsForm = useWatch({ control, name: "services" }) || []
 
-  // optional (UI/meta): schemes list
+  /* ------------------------------------------------------------------
+   SERVICES: beneficiary -> scheme_id/plan_id -> plan details
+  ------------------------------------------------------------------ */
   useSchemes()
 
   const schemeId = React.useMemo(() => {
@@ -337,7 +354,6 @@ export default function NewRequestsPage() {
   const SERVICE_OPTIONS = React.useMemo(() => {
     const payload = planDetailsQuery.data?.data
 
-    // support multiple response shapes
     const services =
       payload?.services ??
       payload?.plan?.services ??
@@ -371,8 +387,9 @@ export default function NewRequestsPage() {
 
   const totalBill = React.useMemo(() => {
     return rowsForm.reduce((sum, r) => {
-      const qtyN = r.qty ? 1 : 0
-      return sum + (r.rate || 0) * qtyN
+      const qty = qtyToNumber(r?.qty)
+      const rate = Number(r?.rate || 0)
+      return sum + rate * qty
     }, 0)
   }, [rowsForm])
 
@@ -381,24 +398,13 @@ export default function NewRequestsPage() {
 
     const fullName = buildFullName(selectedBeneficiary)
     const gender = selectedBeneficiary?.gender
-      ? String(selectedBeneficiary.gender).charAt(0).toUpperCase() +
-        String(selectedBeneficiary.gender).slice(1)
+      ? String(selectedBeneficiary?.gender).charAt(0).toUpperCase() +
+        String(selectedBeneficiary?.gender).slice(1)
       : "—"
     const age = calcAge(selectedBeneficiary?.dob) ?? "—"
-    const enrolleeId =
-      pickStr(
-        selectedBeneficiary?.enrolee_id,
-        selectedBeneficiary?.enrollee_id,
-        selectedBeneficiary?.id,
-      ) || "—"
+    const enrolleeId = pickStr(selectedBeneficiary?.id) || "—"
 
-    const scheme =
-      pickStr(
-        selectedBeneficiary?.plan_name,
-        selectedBeneficiary?.scheme_name,
-        selectedBeneficiary?.plan?.name,
-        selectedBeneficiary?.scheme?.name,
-      ) || "—"
+    const scheme = pickStr(selectedBeneficiary?.plan_name) || "—"
 
     const createdBy =
       pickStr(
@@ -429,8 +435,11 @@ export default function NewRequestsPage() {
     setRequestId(makeRequestId())
     setFiles([])
 
-    // reset form
+    // ✅ set default providerId from beneficiary.hmo_id (still selectable)
+    const defaultProviderId = pickStr(b?.hmo_id)
+
     reset({
+      providerId: defaultProviderId ? String(defaultProviderId) : "",
       diagnosis: [],
       encounterDate: todayISO(),
       services: [
@@ -452,21 +461,14 @@ export default function NewRequestsPage() {
     }
 
     try {
-      const providerId = pickStr(
-        selectedBeneficiary?.provider_id,
-        selectedBeneficiary?.hospital_id,
-      )
       const planId = pickStr(
         selectedBeneficiary?.plan_id,
         selectedBeneficiary?.plan?.id,
       )
-      const enrolleeId = pickStr(
-        selectedBeneficiary?.enrolee_id,
-        selectedBeneficiary?.enrollee_id,
-      )
+      const enrolleeId = pickStr(selectedBeneficiary?.id)
 
       const payload = {
-        provider_id: asNumber(providerId, 0),
+        provider_id: asNumber(data.providerId, 0),
         enrolee_id: enrolleeId,
         plan_id: asNumber(planId, 0),
         channel: "WhatsApp",
@@ -490,6 +492,7 @@ export default function NewRequestsPage() {
 
       toast.success("Claim submitted successfully!")
       reset({
+        providerId: "",
         diagnosis: [],
         encounterDate: todayISO(),
         services: [
@@ -515,20 +518,12 @@ export default function NewRequestsPage() {
   ]
 
   const addRow = () => {
-    const newRowId = String(rows.length + 1)
-    setRows((prevRows) => [
-      ...prevRows,
-      { id: newRowId, serviceId: "", serviceName: "", qty: "", rate: 0 },
-    ])
     append({ serviceId: "", serviceName: "", qty: "", rate: 0 })
   }
 
   const removeRowAtIndex = (idx: number) => {
-    if (rowsForm.length > 1) {
-      remove(idx)
-    } else {
-      toast.error("Must keep at least one service row")
-    }
+    if (fields.length > 1) remove(idx)
+    else toast.error("Must keep at least one service row")
   }
 
   return (
@@ -589,12 +584,7 @@ export default function NewRequestsPage() {
                 {!beneficiariesQuery.isLoading &&
                   beneficiaries.map((b: any, idx: number) => {
                     const name = buildFullName(b)
-                    const scheme = pickStr(
-                      b?.plan_name,
-                      b?.scheme_name,
-                      b?.plan?.name,
-                      b?.scheme?.name,
-                    )
+                    const scheme = pickStr(b?.plan_name)
 
                     return (
                       <button
@@ -623,6 +613,7 @@ export default function NewRequestsPage() {
           </div>
         </div>
       </div>
+
       {/* CONTENT */}
       <div className="flex-1 px-6 pb-[92px] overflow-y-auto">
         {header && (
@@ -677,6 +668,7 @@ export default function NewRequestsPage() {
               <div className="mt-4 h-px bg-[#EAECF0]" />
 
               <div className="mt-6 grid grid-cols-2 gap-6">
+                {/* Diagnosis */}
                 <div>
                   <div className="text-sm text-[#344054] mb-2">
                     Select Diagnosis (Select Multiple if applicable)
@@ -700,6 +692,47 @@ export default function NewRequestsPage() {
                   )}
                 </div>
 
+                {/* ✅ Provider (from useProviders) */}
+                <div>
+                  <div className="text-sm text-[#344054] mb-2">
+                    Select Provider
+                  </div>
+                  <Controller
+                    control={control}
+                    name="providerId"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={providersLoading}
+                      >
+                        <SelectTrigger className="w-full text-primary">
+                          <SelectValue
+                            placeholder={
+                              providersLoading
+                                ? "Loading providers..."
+                                : "Select provider"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PROVIDER_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.providerId && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.providerId.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Encounter date */}
                 <div>
                   <div className="text-sm text-[#344054] mb-2">
                     Select Encounter date
@@ -737,7 +770,7 @@ export default function NewRequestsPage() {
                       Treatment Items
                     </h4>
                     <Badge className="bg-[#F2F4F7] text-[#344054]">
-                      {rowsForm.length}
+                      {fields.length}
                     </Badge>
                     {servicesLoading && (
                       <span className="text-xs text-[#667085] ml-2">
@@ -753,13 +786,12 @@ export default function NewRequestsPage() {
                 <div className="h-px bg-[#EAECF0]" />
 
                 <div className="p-6 space-y-6">
-                  {rowsForm.map((r, idx) => {
-                    const amount = r.rate * qtyToNumber(r.qty)
+                  {fields.map((f, idx) => {
+                    const r = rowsForm[idx] ?? f
+                    const amount = Number(r.rate || 0) * qtyToNumber(r.qty)
+
                     return (
-                      <div
-                        key={`r-${idx + 1}`}
-                        className="flex justify-between gap-4"
-                      >
+                      <div key={f.id} className="flex justify-between gap-4">
                         {/* Service */}
                         <div>
                           <div className="text-sm text-[#344054] mb-2">
@@ -776,7 +808,6 @@ export default function NewRequestsPage() {
                                     (x) => x.id === v,
                                   )
                                   field.onChange(v)
-                                  // Update serviceName and rate using setValue for proper re-render
                                   if (svc) {
                                     setValue(
                                       `services.${idx}.serviceName`,
@@ -788,6 +819,14 @@ export default function NewRequestsPage() {
                                     setValue(`services.${idx}.rate`, svc.rate, {
                                       shouldDirty: true,
                                     })
+                                  } else {
+                                    setValue(
+                                      `services.${idx}.serviceName`,
+                                      "",
+                                      {
+                                        shouldDirty: true,
+                                      },
+                                    )
                                   }
                                 }}
                                 disabled={
@@ -795,7 +834,7 @@ export default function NewRequestsPage() {
                                   SERVICE_OPTIONS.length === 0
                                 }
                               >
-                                <SelectTrigger className="w-[347px] rounded-[12px]">
+                                <SelectTrigger className="w-[347px] text-primary">
                                   <SelectValue
                                     placeholder={
                                       servicesLoading
@@ -818,7 +857,7 @@ export default function NewRequestsPage() {
                           />
                         </div>
 
-                        {/* Quantity */}
+                        {/* Quantity (UNCHANGED) */}
                         <div>
                           <div className="text-sm text-[#344054] mb-2">
                             Quantity
@@ -831,7 +870,7 @@ export default function NewRequestsPage() {
                                 value={field.value}
                                 onValueChange={field.onChange}
                               >
-                                <SelectTrigger className="w-[122px]">
+                                <SelectTrigger className="w-[122px] text-primary">
                                   <SelectValue placeholder="Qty" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -896,10 +935,12 @@ export default function NewRequestsPage() {
                   <button
                     type="button"
                     onClick={addRow}
-                    className="h-[44px] w-[44px] rounded-[12px] border border-[#D0D5DD] flex items-center justify-center"
+                    className="h-11 w-11 rounded-xl border border-[#D0D5DD] flex items-center justify-center"
                     aria-label="Add row"
                   >
-                    <Plus className="h-5 w-5 text-[#475467]" />
+                    <span className="h-5 w-5 rounded border-[1.5px] border-[#5B636E] p-1 flex justify-center items-center">
+                      <Plus className="text-[#5B636E] w-4 h-4 shrink-0" />
+                    </span>
                   </button>
                 </div>
 

@@ -1,22 +1,27 @@
 "use client"
 
-import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
 import dayjs from "dayjs"
+import * as React from "react"
+import {
+  Controller,
+  useFieldArray,
+  useForm,
+  type SubmitHandler,
+} from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
-import {
-  useForm,
-  Controller,
-  type SubmitHandler,
-  useWatch,
-} from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useFieldArray } from "react-hook-form"
 
+import Label from "@/components/form/label"
+import {
+  CopyIcon,
+  PaperClipIcon,
+  SendIcon,
+  WhatsAppIcon,
+} from "@/components/svgs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -24,18 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
-import { useRequestDetails } from "@/lib/api/requests"
 import { useCreateNewClaim, type NewClaimPayload } from "@/lib/api/claims"
-import type { RequestItem, RequestStatus } from "./types"
-import {
-  CopyIcon,
-  PaperClipIcon,
-  SendIcon,
-  WhatsAppIcon,
-} from "@/components/svgs"
-import Label from "@/components/form/label"
+import { useServices } from "@/lib/api/provider"
+import { useRequestDetails } from "@/lib/api/requests"
+import { cn } from "@/lib/utils"
 import { PlusIcon } from "lucide-react"
+import type { RequestItem, RequestStatus } from "./types"
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -47,6 +46,13 @@ function pickStr(...vals: any[]) {
     if (s) return s
   }
   return ""
+}
+
+function asMoney(x: any, fallback = 0) {
+  if (x === null || x === undefined) return fallback
+  const s = String(x).replace(/,/g, "").trim()
+  const n = Number(s)
+  return Number.isFinite(n) ? n : fallback
 }
 
 function asNumber(x: any, fallback = 0) {
@@ -120,7 +126,9 @@ interface RequestDetailsProps {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Define schema first, then infer type from it
+ * NOTE:
+ * category is not needed in the UI, but your schema currently requires it.
+ * We keep it in the form values (hidden) and auto-set it to "General".
  */
 const serviceLineSchema = z.object({
   category: z.string().min(1, "Select a category"),
@@ -139,7 +147,6 @@ const fillRequestSchema = z.object({
   services: z.array(serviceLineSchema).min(1, "Add at least one service"),
 })
 
-// Infer the type from the schema
 type FillRequestFormValues = z.infer<typeof fillRequestSchema>
 
 /* -------------------------------------------------------------------------- */
@@ -178,8 +185,19 @@ export function ChanneledRequestDetails({
     ? api.recent_claims
     : []
 
-  // Service catalog from API
-  const rawServices = Array.isArray(api?.services) ? api.services : []
+  const providerIdResolved = asNumber(provider?.id ?? claim?.provider_id, 0)
+
+  // Fetch full service catalog via fetch-services.php (provider scoped)
+  const servicesQ = useServices(providerIdResolved) as {
+    data?: { status?: string; data?: any[]; message?: string }
+    isLoading?: boolean
+    isError?: boolean
+    error?: unknown
+  }
+
+  const rawServices = React.useMemo(() => {
+    return Array.isArray(servicesQ.data?.data) ? servicesQ.data!.data! : []
+  }, [servicesQ.data])
 
   const providerName = pickStr(provider?.name, selected?.name)
   const providerPhone = pickStr(
@@ -196,12 +214,7 @@ export function ChanneledRequestDetails({
       claim?.enrolee_name,
     ) || "—"
 
-  const enrolleeId = pickStr(
-    enrollee?.enrolee_id,
-    enrollee?.enrollee_id,
-    claim?.enrollee_code,
-    "—",
-  )
+  const enrolleeId = pickStr(enrollee?.id, "—")
   const planName = pickStr(plan?.name, claim?.plan_name, "—")
 
   const claimCode = pickStr(claim?.tracking_number, claim?.id, selected?.id)
@@ -246,55 +259,37 @@ export function ChanneledRequestDetails({
   /* ----------------------------- */
   /* Normalize service catalog      */
   /* ----------------------------- */
-  const SERVICE_OPTIONS = React.useMemo(() => {
-    return rawServices
+
+  type ServiceOption = {
+    id: string // select value
+    itemId: number
+    itemType: string
+    name: string
+    category: string
+    tariff: number
+  }
+
+  const SERVICE_OPTIONS: ServiceOption[] = React.useMemo(() => {
+    const out = rawServices
       .map((s: any) => {
-        const id = pickStr(s?.id, s?.service_id, s?.code)
-        const name = pickStr(s?.name, s?.service_name, s?.title, s?.service)
-        const category = pickStr(
-          s?.category,
-          s?.service_category,
-          s?.category_name,
-          s?.group,
-          "General",
-        )
-        const tariff = asNumber(
-          s?.tariff ?? s?.rate ?? s?.price ?? s?.amount ?? s?.cost,
-          0,
-        )
+        const itemId = asNumber(s?.id, 0)
+        const name = pickStr(s?.name)
+        const tariff = asMoney(s?.cost, 0)
+
         return {
-          id: String(id),
-          name: String(name),
-          category: String(category),
+          id: String(itemId),
+          itemId,
+          itemType: "service",
+          name,
+          category: "General", // kept for schema only
           tariff,
         }
       })
-      .filter((x) => x.id && x.name)
+      .filter((x) => x.itemId > 0 && x.name)
+
+    out.sort((a, b) => a.name.localeCompare(b.name))
+    return out
   }, [rawServices])
-
-  const CATEGORY_OPTIONS = React.useMemo(() => {
-    const set = new Set<string>()
-    for (const s of SERVICE_OPTIONS) set.add(s.category || "General")
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [SERVICE_OPTIONS])
-
-  const servicesByCategory = React.useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; tariff: number }[]
-    >()
-    for (const s of SERVICE_OPTIONS) {
-      const key = s.category || "General"
-      const arr = map.get(key) ?? []
-      arr.push({ id: s.id, name: s.name, tariff: s.tariff })
-      map.set(key, arr)
-    }
-    for (const [k, arr] of map.entries()) {
-      arr.sort((a, b) => a.name.localeCompare(b.name))
-      map.set(k, arr)
-    }
-    return map
-  }, [SERVICE_OPTIONS])
 
   /* ----------------------------- */
   /* RHF form                       */
@@ -311,21 +306,20 @@ export function ChanneledRequestDetails({
       diagnosis: "",
       remarks: "",
       services: [
-        { category: "", serviceId: "", quantity: 1, tariff: 0 },
-        { category: "", serviceId: "", quantity: 1, tariff: 0 },
+        { category: "General", serviceId: "", quantity: 1, tariff: 0 },
+        { category: "General", serviceId: "", quantity: 1, tariff: 0 },
       ],
     } as FillRequestFormValues,
   })
 
   const { control, handleSubmit, reset, setValue, watch, formState } = form
-  const { errors, isSubmitting } = formState
+  const { errors } = formState
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "services",
   })
 
-  // Memoize reset payload
   const resetPayload = React.useMemo<FillRequestFormValues>(
     () => ({
       enrolleeId: pickStr(enrolleeId, ""),
@@ -334,7 +328,9 @@ export function ChanneledRequestDetails({
       scheme: pickStr(planName, ""),
       diagnosis: pickStr(diagnosis === "—" ? "" : diagnosis, ""),
       remarks: "",
-      services: [{ category: "", serviceId: "", quantity: 1, tariff: 0 }],
+      services: [
+        { category: "General", serviceId: "", quantity: 1, tariff: 0 },
+      ],
     }),
     [enrolleeId, claimDate, enrolleeName, planName, diagnosis],
   )
@@ -348,9 +344,20 @@ export function ChanneledRequestDetails({
     values,
   ) => {
     try {
-      // Build the NewClaimPayload according to the expected schema
+      const lines = values.services.map((s) => {
+        const svc = SERVICE_OPTIONS.find((x) => x.id === s.serviceId)
+        if (!svc) throw new Error("Invalid service selected")
+
+        return {
+          item_id: svc.itemId,
+          item_type: svc.itemType,
+          quantity: Number(s.quantity),
+          cost: Number(s.tariff),
+        }
+      })
+
       const newClaimPayload: NewClaimPayload = {
-        provider_id: asNumber(provider?.id ?? claim?.provider_id, 0),
+        provider_id: providerIdResolved,
         enrolee_id: values.enrolleeId,
         plan_id: asNumber(plan?.id ?? claim?.plan_id, 0),
         channel: pickStr(claim?.channel, "WhatsApp"),
@@ -359,17 +366,10 @@ export function ChanneledRequestDetails({
         prescription: undefined,
         radiology: undefined,
         lab: undefined,
-        services: values.services.map((s) => ({
-          item_id: asNumber(s.serviceId, 0),
-          item_type: s.category,
-          quantity: s.quantity,
-          cost: asNumber(s.tariff, 0),
-        })),
+        services: lines,
       }
 
       console.log("[v0] Submitting new claim with payload:", newClaimPayload)
-
-      // Call the mutation to create the claim
       await createClaimMutation.mutateAsync(newClaimPayload)
 
       toast.success("Claim submitted successfully!")
@@ -382,6 +382,7 @@ export function ChanneledRequestDetails({
       toast.error(errorMessage)
     }
   }
+  const canSend = showFillRequest && !createClaimMutation.isPending
 
   return (
     <div className="flex-1 flex gap-6">
@@ -483,7 +484,7 @@ export function ChanneledRequestDetails({
                   )}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-[#B2DDFF] bg-[#EDF5FF] p-6">
+                <div className="rounded-2xl border border-[#1671D933] bg-[#1671D90F] p-6">
                   <p className="text-[16px]/[24px] font-hnd font-semibold text-[#101828]">
                     Request is Approved and Eligible for claims
                   </p>
@@ -569,7 +570,7 @@ export function ChanneledRequestDetails({
                         )}
                       />
                       {errors.enrolleeId && (
-                        <p className="mt-1 text-xs text-red-600">
+                        <p className="mt-1 text-xs text-error">
                           {String(errors.enrolleeId.message)}
                         </p>
                       )}
@@ -686,9 +687,21 @@ export function ChanneledRequestDetails({
 
                   {/* SERVICES */}
                   <div className="mt-6">
-                    <p className="text-[14px]/[20px] font-hnd font-semibold text-[#101828]">
-                      Services
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[14px]/[20px] font-hnd font-semibold text-[#101828]">
+                        Services
+                      </p>
+
+                      {servicesQ.isLoading ? (
+                        <span className="text-xs text-[#98A2B3]">
+                          Loading services…
+                        </span>
+                      ) : servicesQ.isError ? (
+                        <span className="text-xs text-red-600">
+                          Failed to load services
+                        </span>
+                      ) : null}
+                    </div>
 
                     {errors.services?.message && (
                       <p className="mt-1 text-xs text-red-600">
@@ -698,8 +711,7 @@ export function ChanneledRequestDetails({
 
                     <div className="mt-4 space-y-4">
                       {fields.map((f, idx) => {
-                        const cat = watch(`services.${idx}.category`)
-                        const list = servicesByCategory.get(cat || "") ?? []
+                        const list = SERVICE_OPTIONS
 
                         return (
                           <div
@@ -727,7 +739,8 @@ export function ChanneledRequestDetails({
                             </div>
 
                             <div className="mt-4 grid grid-cols-2 gap-4">
-                              {/* Category */}
+                              {/* Service Category (NOT NEEDED) */}
+                              {/*
                               <div className="col-span-2">
                                 <Label className="block text-[12px]/[18px] text-[#667085] mb-1">
                                   Service Category
@@ -741,43 +754,21 @@ export function ChanneledRequestDetails({
                                       value={field.value}
                                       onValueChange={(v) => {
                                         field.onChange(v)
-                                        setValue(
-                                          `services.${idx}.serviceId`,
-                                          "",
-                                        )
+                                        setValue(`services.${idx}.serviceId`, "")
                                         setValue(`services.${idx}.tariff`, 0)
                                       }}
                                     >
-                                      <SelectTrigger
-                                        className={cn(
-                                          "h-[44px] w-full rounded-xl border",
-                                          errors.services?.[idx]?.category
-                                            ? "border-red-500"
-                                            : "border-[#E4E7EC]",
-                                        )}
-                                      >
+                                      <SelectTrigger className="h-[44px] w-full rounded-xl border border-[#E4E7EC]">
                                         <SelectValue placeholder="Select Category" />
                                       </SelectTrigger>
-
                                       <SelectContent>
-                                        {CATEGORY_OPTIONS.map((c) => (
-                                          <SelectItem key={c} value={c}>
-                                            {c}
-                                          </SelectItem>
-                                        ))}
+                                        <SelectItem value="General">General</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   )}
                                 />
-
-                                {errors.services?.[idx]?.category && (
-                                  <p className="mt-1 text-xs text-red-600">
-                                    {String(
-                                      errors.services[idx]?.category?.message,
-                                    )}
-                                  </p>
-                                )}
                               </div>
+                              */}
 
                               {/* Service */}
                               <div className="col-span-2">
@@ -793,17 +784,33 @@ export function ChanneledRequestDetails({
                                       value={field.value}
                                       onValueChange={(v) => {
                                         field.onChange(v)
+
+                                        // keep schema happy even though category is not shown
+                                        setValue(
+                                          `services.${idx}.category`,
+                                          "General",
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                          },
+                                        )
+
                                         const svc = list.find((x) => x.id === v)
+                                        const qty =
+                                          Number(
+                                            watch(`services.${idx}.quantity`),
+                                          ) || 1
+                                        const baseTariff = svc?.tariff ?? 0
+
                                         setValue(
                                           `services.${idx}.tariff`,
-                                          svc?.tariff ?? 0,
+                                          baseTariff * qty,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
                                           },
                                         )
                                       }}
-                                      disabled={!cat}
                                     >
                                       <SelectTrigger
                                         className={cn(
@@ -847,34 +854,40 @@ export function ChanneledRequestDetails({
                                   render={({ field }) => (
                                     <Input
                                       type="number"
-                                      value={field.value ?? ""}
+                                      inputMode="numeric"
+                                      value={
+                                        field.value === 0
+                                          ? ""
+                                          : (field.value ?? "")
+                                      }
                                       onChange={(e) => {
-                                        const val = e.target.value
-                                        const quantity =
-                                          val === "" ? 1 : Number(val)
-                                        field.onChange(quantity)
+                                        const raw = e.target.value
 
-                                        // Get the current tariff base value from the service
-                                        const currentTariff = watch(
-                                          `services.${idx}.tariff`,
-                                        )
-                                        const serviceId = watch(
+                                        // allow delete (empty string)
+                                        if (raw === "") {
+                                          field.onChange("" as any)
+                                          setValue(
+                                            `services.${idx}.tariff`,
+                                            0,
+                                            { shouldDirty: true },
+                                          )
+                                          return
+                                        }
+
+                                        const q = Math.max(1, Number(raw || 1))
+                                        field.onChange(q)
+
+                                        const svcId = watch(
                                           `services.${idx}.serviceId`,
                                         )
-                                        const selectedService = list.find(
-                                          (x) => x.id === serviceId,
+                                        const svc = SERVICE_OPTIONS.find(
+                                          (x) => x.id === svcId,
                                         )
-                                        const baseTariff =
-                                          selectedService?.tariff ??
-                                          currentTariff ??
-                                          0
+                                        const baseTariff = svc?.tariff ?? 0
 
-                                        // Calculate new tariff = base tariff * quantity
-                                        const calculatedTariff =
-                                          baseTariff * quantity
                                         setValue(
                                           `services.${idx}.tariff`,
-                                          calculatedTariff,
+                                          baseTariff * q,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
@@ -887,7 +900,7 @@ export function ChanneledRequestDetails({
                                           ? "border-red-500"
                                           : "border-[#E4E7EC]",
                                       )}
-                                      placeholder="Paste here"
+                                      placeholder="1"
                                     />
                                   )}
                                 />
@@ -931,10 +944,15 @@ export function ChanneledRequestDetails({
                     <div className="mt-4 flex items-center justify-between">
                       <button
                         type="button"
-                        className="w-full text-[14px]/[20px] font-hnd font-semibold text-[#344054] flex items-center gap-2 justify-between cursor-pointer"
+                        disabled={!!servicesQ.isLoading}
+                        className={cn(
+                          "w-full text-[14px]/[20px] font-hnd font-semibold text-[#344054] flex items-center gap-2 justify-between cursor-pointer",
+                          servicesQ.isLoading &&
+                            "opacity-50 cursor-not-allowed",
+                        )}
                         onClick={() =>
                           append({
-                            category: "",
+                            category: "General",
                             serviceId: "",
                             quantity: 1,
                             tariff: 0,
@@ -944,9 +962,9 @@ export function ChanneledRequestDetails({
                         Add New Service <PlusIcon />
                       </button>
 
-                      {SERVICE_OPTIONS.length === 0 && (
+                      {!servicesQ.isLoading && SERVICE_OPTIONS.length === 0 && (
                         <span className="text-xs text-[#98A2B3]">
-                          No services returned from API
+                          No services returned for this provider
                         </span>
                       )}
                     </div>
@@ -959,12 +977,13 @@ export function ChanneledRequestDetails({
 
         {/* Composer Bar */}
         <div className="border-t border-[#E4E7EC] p-4">
-          <div className="h-12 flex items-center justify-between   gap-3">
+          <div className="h-12 flex items-center justify-between gap-3">
             <div className="h-12 px-4 py-3 flex-1 flex items-center rounded-2xl bg-[#F2F4F7] border border-[#EAECF0]">
               <PaperClipIcon />
               <Controller
                 control={control}
                 name="remarks"
+                disabled={!canSend}
                 render={({ field }) => (
                   <Input
                     {...field}
@@ -977,10 +996,7 @@ export function ChanneledRequestDetails({
             <Button
               type="submit"
               form={showFillRequest ? "fill-request-form" : undefined}
-              disabled={
-                createClaimMutation.isPending ||
-                (showFillRequest ? false : true)
-              }
+              disabled={!canSend}
               className="text-white tracking-normal text-[14.94px] font-inter font-semibold rounded-xl hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createClaimMutation.isPending ? "Sending..." : "Send"}{" "}
@@ -1028,7 +1044,7 @@ export function ChanneledRequestDetails({
               </p>
 
               <div className="mt-2 flex items-center justify-between text-[12px]/[18px] text-[#667085]">
-                <span>{/* dependants */}</span>
+                <span />
                 <span className="text-[#101828] font-hnd font-semibold">
                   {planName || "—"}
                 </span>

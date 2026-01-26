@@ -11,13 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
 import { useChannelsRequests } from "@/lib/api/requests"
+import { cn } from "@/lib/utils"
+import dayjs from "dayjs"
 import { Search } from "lucide-react"
 import * as React from "react"
 import type { RequestItem } from "./types"
-import { STATUS_BADGE, STATUS_LABEL } from "./types"
-import dayjs from "dayjs"
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                    */
 /* -------------------------------------------------------------------------- */
@@ -58,30 +57,19 @@ function formatTimestamp(input: any): string {
   return `${d.format("DD/MM/YY")} · ${d.format("h:mma").toUpperCase()}`
 }
 
-/**
- * WhatsApp/channels endpoint row -> RequestItem for LIST UI
- * NEW UI wants:
- * - Title: Hospital/provider name
- * - Subtitle: phone
- * - Right: badge New
- * - Right bottom: timestamp
- */
 function mapChannelsApiToItem(r: any): RequestItem {
-  // channel/provider from payload (fallback to whatsapp)
   const ch = lower(r?.channel) || "whatsapp"
   const provider: RequestItem["provider"] =
     ch === "email" ? "email" : ch === "chat" ? "chat" : "whatsapp"
 
-  // Read/New: prefer API's read_status (1 = read, 0 = new/unread)
+  // ✅ 0 = new, 1 = seen
   const status: RequestItem["status"] =
     r?.read_status != null
-      ? Number(r.read_status) === 1
-        ? "read"
-        : "new"
-      : Number(r?.processed ?? 0) === 1
-        ? "read"
-        : "new"
-  // Normalize statuses to your RequestStatus (pending/overdue/resolved/completed)
+      ? Number(r.read_status) === 0
+        ? "new"
+        : "read"
+      : "new"
+
   const raw = lower(r?.status)
   const requestStatus: RequestItem["requestStatus"] =
     raw === "queried"
@@ -92,8 +80,6 @@ function mapChannelsApiToItem(r: any): RequestItem {
           ? "completed"
           : "pending"
 
-  // NEW UI list card:
-  // Title should be hospital/provider name
   const name =
     pickStr(
       r?.provider_name,
@@ -103,7 +89,6 @@ function mapChannelsApiToItem(r: any): RequestItem {
       r?.provider,
     ) || "—"
 
-  // Subtitle should be phone (your screenshot shows phone under Hospital ABC)
   const phone = pickStr(
     r?.provider_phone,
     r?.hospital_phone,
@@ -112,12 +97,11 @@ function mapChannelsApiToItem(r: any): RequestItem {
     r?.enrollee_phone,
   )
 
-  // Put phone into organization field for display under name
   const organization = phone || "—"
 
   const timestamp =
     pickStr(
-      formatTimestamp(r?.date_created), // unix seconds
+      formatTimestamp(r?.date_created),
       formatTimestamp(r?.created_at),
       formatTimestamp(r?.timestamp),
       formatTimestamp(r?.encounter_date),
@@ -240,13 +224,6 @@ export function ChanneledRequestList({
             <SelectItem value="chat">Chat</SelectItem>
           </SelectContent>
         </Select>
-
-        {isLoading && (
-          <p className="text-xs text-[#98A2B3]">Loading requests…</p>
-        )}
-        {error && !isLoading && (
-          <p className="text-xs text-red-600">Failed to load requests</p>
-        )}
       </div>
 
       {/* Tabs (NEW UI) */}
@@ -266,9 +243,13 @@ export function ChanneledRequestList({
 
       {/* List */}
       <div className="w-full py-4 flex flex-col gap-3">
-        {filteredRequests.length === 0 && !isLoading && (
+        {isLoading ? (
+          <p className="text-xs text-[#98A2B3]">Loading requests…</p>
+        ) : error && !isLoading ? (
+          <p className="text-xs text-red-600">Failed to load requests</p>
+        ) : filteredRequests.length === 0 && !isLoading ? (
           <p className="text-xs text-[#98A2B3]">No requests found.</p>
-        )}
+        ) : null}
 
         {filteredRequests.map((request) => {
           return (

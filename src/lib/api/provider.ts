@@ -123,7 +123,36 @@ export interface NewProviderPayload {
   lga: string
   schemes: string[]
 }
+export interface FetchServicesPayload {
+  provider_id: number | string
+}
 
+export interface ServiceListItem {
+  // normalized-ish fields (backend may include extras)
+  id?: number | string
+  item_id?: number | string
+  service_id?: number | string
+  code?: number | string
+  name?: string
+  service_name?: string
+  category?: string
+  service_category?: string
+  group?: string
+  item_type?: string
+  tariff?: number | string
+  cost?: number | string
+  rate?: number | string
+  price?: number | string
+  amount?: number | string
+  [key: string]: any
+}
+
+export interface ServicesApiResponse {
+  status: string // "success" | "empty" | "error" | ...
+  data?: ServiceListItem[]
+  message?: string
+  [key: string]: any
+}
 /* ------------------ List Providers ------------------ */
 
 export function useProviders(filters: ProviderFilters = {}) {
@@ -141,7 +170,7 @@ export function useProviders(filters: ProviderFilters = {}) {
 
       const res = await apiClient.post<ProvidersApiResponse>(
         "/fetch-providers.php",
-        body
+        body,
       )
 
       const payload = res.data
@@ -188,11 +217,11 @@ export function useCreatePlan() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (
-      payload: CreateProviderPayload
+      payload: CreateProviderPayload,
     ): Promise<SimpleApiResponse> => {
       const response = await apiClient.post<SimpleApiResponse>(
         "/new-provider.php",
-        payload
+        payload,
       )
 
       const apiResponse = response.data
@@ -221,11 +250,11 @@ export function useCreateProvider() {
 
   return useMutation({
     mutationFn: async (
-      payload: NewProviderPayload
+      payload: NewProviderPayload,
     ): Promise<SimpleApiResponse> => {
       const res = await apiClient.post<SimpleApiResponse>(
         "/new-provider.php",
-        payload
+        payload,
       )
 
       const apiResponse = res.data
@@ -255,11 +284,11 @@ export function useEditProvider() {
 
   return useMutation({
     mutationFn: async (
-      payload: EditProviderPayload
+      payload: EditProviderPayload,
     ): Promise<EditSimpleApiResponse> => {
       const res = await apiClient.post<EditSimpleApiResponse>(
         "/edit-provider.php",
-        payload
+        payload,
       )
       const apiResponse = res.data
 
@@ -293,11 +322,11 @@ export function useDeleteProvider() {
 
   return useMutation({
     mutationFn: async (
-      payload: DeleteProviderPayload
+      payload: DeleteProviderPayload,
     ): Promise<SimpleApiResponse> => {
       const res = await apiClient.post<SimpleApiResponse>(
         "/delete-provider.php",
-        payload
+        payload,
       )
 
       const apiResponse = res.data
@@ -323,7 +352,9 @@ export function useDeleteProvider() {
   })
 }
 
-/* ========= Hook ========= */
+/* ============================
+   GET HMOs
+============================ */
 
 export function useHmos(filters: HmoFilters = {}) {
   return useQuery({
@@ -370,6 +401,56 @@ export function useHmos(filters: HmoFilters = {}) {
       }
 
       throw new Error(payload.message || "Failed to fetch HMOs")
+    },
+  })
+}
+/* ============================
+   GET SERVICES
+============================ */
+
+export function useServices(provider_id?: number | string) {
+  return useQuery({
+    queryKey: ["services", { provider_id: provider_id ?? "" }],
+    enabled: !!provider_id,
+    queryFn: async (): Promise<ServicesApiResponse> => {
+      const body: FetchServicesPayload = {
+        provider_id: provider_id as any,
+      }
+
+      const res = await apiClient.post<ServicesApiResponse>(
+        "/fetch-services.php",
+        body,
+      )
+
+      const payload = res.data
+
+      if (!payload) {
+        throw new Error("Failed to fetch services")
+      }
+
+      // Some APIs return services under `data`, others might return `services`
+      const servicesArray =
+        (Array.isArray(payload.data) ? payload.data : []) ||
+        (Array.isArray((payload as any).services)
+          ? (payload as any).services
+          : [])
+
+      if (payload.status === "success") {
+        return {
+          ...payload,
+          data: servicesArray,
+        }
+      }
+
+      if (payload.status === "empty") {
+        return {
+          ...payload,
+          status: "success",
+          data: [],
+        }
+      }
+
+      throw new Error(payload.message || "Failed to fetch services")
     },
   })
 }
