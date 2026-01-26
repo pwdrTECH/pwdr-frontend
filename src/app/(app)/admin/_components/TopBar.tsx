@@ -20,6 +20,7 @@ const LABELS: Record<string, string> = {
   "": "Dashboard",
   dashboard: "Dashboard",
   requests: "EMR Requests",
+  "requests/new": "New Requests",
   "requests/pre-auth": "Pre-Auth Requests",
   "requests/status": "Request Status",
   "requests/channeled": "Channeled Requests",

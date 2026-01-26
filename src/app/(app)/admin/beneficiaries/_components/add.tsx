@@ -1,22 +1,22 @@
-"use client";
+"use client"
 
-import { SelectField, TextField } from "@/components/form";
-import { AddButon, CancelButton, SubmitButton } from "@/components/form/button";
-import { ConfirmPopover } from "@/components/overlays/ConfirmPopover";
-import { CustomSheet } from "@/components/overlays/SideDialog";
-import { UploadFile } from "@/components/svgs";
-import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
-import { useCreateEnrollee } from "@/lib/api/beneficiaries";
-import { usePlansByScheme, useSchemes } from "@/lib/api/schemes";
-import { getLgasByStateId, STATES } from "@/lib/nigeria-lga";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, X } from "lucide-react";
-import Image from "next/image";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
+import { SelectField, TextField } from "@/components/form"
+import { AddButon, CancelButton, SubmitButton } from "@/components/form/button"
+import { ConfirmPopover } from "@/components/overlays/ConfirmPopover"
+import { CustomSheet } from "@/components/overlays/SideDialog"
+import { UploadFile } from "@/components/svgs"
+import { Button } from "@/components/ui/button"
+import { Form } from "@/components/ui/form"
+import { useCreateEnrollee } from "@/lib/api/beneficiaries"
+import { usePlansByScheme, useSchemes } from "@/lib/api/schemes"
+import { getLgasByStateId, STATES } from "@/lib/nigeria-lga"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus, X } from "lucide-react"
+import Image from "next/image"
+import React, { useState } from "react"
+import { useForm } from "react-hook-form"
+import { toast } from "sonner"
+import { z } from "zod"
 
 const enrolleeSchema = z.object({
   // Enrollee Details
@@ -63,29 +63,29 @@ const enrolleeSchema = z.object({
   nokStreet: z.string().optional(),
   nokMobile: z.string().optional(),
   nokEmail: z.string().optional(),
-});
+})
 
-type EnrolleeFormValues = z.infer<typeof enrolleeSchema>;
+type EnrolleeFormValues = z.infer<typeof enrolleeSchema>
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
     reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result);
-    };
-    reader.onerror = reject;
-  });
-};
+      const result = reader.result as string
+      resolve(result)
+    }
+    reader.onerror = reject
+  })
+}
 
 export function AddEnrolleeForm() {
-  const [open, setOpen] = useState(false);
-  const [hasDependents, setHasDependents] = useState(false);
-  const [enrolleeImage, setEnrolleeImage] = useState<string | null>(null);
-  const [dependentImage, setDependentImage] = useState<string | null>(null);
-  const { data: schemes } = useSchemes();
-  const createEnrollee = useCreateEnrollee();
+  const [open, setOpen] = useState(false)
+  const [hasDependents, setHasDependents] = useState(false)
+  const [enrolleeImage, setEnrolleeImage] = useState<string | null>(null)
+  const [dependentImage, setDependentImage] = useState<string | null>(null)
+  const { data: schemes } = useSchemes()
+  const createEnrollee = useCreateEnrollee()
 
   const form = useForm<EnrolleeFormValues>({
     resolver: zodResolver(enrolleeSchema) as any,
@@ -136,78 +136,76 @@ export function AddEnrolleeForm() {
       nokEmail: "",
     },
     mode: "onSubmit",
-  });
-  const selectedState = form.watch("state");
-  const employmentStatus = form.watch("employmentStatus");
-  const selectedScheme = form.watch("scheme");
+  })
+  const selectedState = form.watch("state")
+  const employmentStatus = form.watch("employmentStatus")
+  const selectedScheme = form.watch("scheme")
 
-  const selectedSchemeId = selectedScheme ? Number(selectedScheme) : undefined;
+  const selectedSchemeId = selectedScheme ? Number(selectedScheme) : undefined
 
-  const { data: plans } = usePlansByScheme(selectedSchemeId);
+  const { data: plans } = usePlansByScheme(selectedSchemeId)
   React.useEffect(() => {
     if (selectedState) {
-      form.setValue("lga", "", { shouldDirty: true, shouldValidate: false });
+      form.setValue("lga", "", { shouldDirty: true, shouldValidate: false })
     }
-  }, [selectedState, form]);
+  }, [selectedState, form])
 
   const stateOptions = STATES.map((state) => ({
     value: state.id.toString(),
     label: state.name,
-  }));
+  }))
 
   const schemeOptions =
-    schemes?.map((s) => ({ label: s.name, value: s.id })) || [];
-  const planOptions = plans?.map((s) => ({ label: s.name, value: s.id })) || [];
+    schemes?.map((s) => ({ label: s.name, value: s.id })) || []
+  const planOptions = plans?.map((s) => ({ label: s.name, value: s.id })) || []
 
   const lgaOptions = getLgasByStateId(Number(selectedState)).map((lga) => ({
     value: lga,
     label: lga,
-  }));
+  }))
 
   const handleEnrolleeImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0]
     if (file) {
       try {
-        const base64 = await fileToBase64(file);
-        setEnrolleeImage(base64);
-        form.setValue("passportImage", base64);
+        const base64 = await fileToBase64(file)
+        setEnrolleeImage(base64)
+        form.setValue("passportImage", base64)
       } catch (error) {
-        console.error("Error converting file to base64:", error);
+        console.error("Error converting file to base64:", error)
       }
     }
-  };
+  }
 
   const handleDependentImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0]
     if (file) {
       try {
-        const base64 = await fileToBase64(file);
-        setDependentImage(base64);
-        form.setValue("dependents.0.passportImage", base64);
+        const base64 = await fileToBase64(file)
+        setDependentImage(base64)
+        form.setValue("dependents.0.passportImage", base64)
       } catch (error) {
-        console.error("Error converting file to base64:", error);
+        console.error("Error converting file to base64:", error)
       }
     }
-  };
+  }
 
   const removeEnrolleeImage = () => {
-    setEnrolleeImage(null);
-    form.setValue("passportImage", null);
-  };
+    setEnrolleeImage(null)
+    form.setValue("passportImage", null)
+  }
 
   const removeDependentImage = () => {
-    setDependentImage(null);
-    form.setValue("dependents.0.passportImage", null);
-  };
+    setDependentImage(null)
+    form.setValue("dependents.0.passportImage", null)
+  }
 
   const onSubmit = async (values: EnrolleeFormValues) => {
     try {
-      console.log("Submitting enrollee data:", values);
-
       const payload = {
         email: values.email,
         first_name: values.firstName,
@@ -232,74 +230,69 @@ export function AddEnrolleeForm() {
         next_of_kin_phone: values.nokMobile || "Not specified",
         next_of_kin_address: values.nokStreet || "Not specified",
         passport_image: values.passportImage || undefined,
-      };
+      }
 
-      console.log("API Payload:", payload);
-
-      const result = await createEnrollee.mutateAsync(payload);
-
-      console.log("Enrollee created successfully:", result);
-
-      handleCancel();
-      toast.success("Enrollee created successfully!");
+      await createEnrollee.mutateAsync(payload)
+      handleCancel()
+      toast.success("Enrollee created successfully!")
     } catch (error: any) {
-      console.error("Error creating enrollee:", error);
+      console.error("Error creating enrollee:", error)
 
       // Handle server validation errors
       if (error.response?.data?.errors) {
-        const serverErrors = error.response.data.errors;
-        let hasFieldErrors = false;
+        const serverErrors = error.response.data.errors
+        let hasFieldErrors = false
 
         // Set errors on specific form fields
         Object.keys(serverErrors).forEach((field) => {
-          const formField = mapApiFieldToFormField(field);
+          const formField = mapApiFieldToFormField(field)
           if (formField) {
-            hasFieldErrors = true;
+            hasFieldErrors = true
             form.setError(formField as any, {
               type: "server",
               message: serverErrors[field][0],
-            });
+            })
           }
-        });
+        })
 
         // Show general error for fields that couldn't be mapped
         if (hasFieldErrors) {
           form.setError("root", {
             type: "server",
             message: "Please fix the errors above",
-          });
+          })
           toast.error("Validation Error", {
             description: "Please check the form for errors.",
-          });
+          })
         } else {
           // Show all server errors in toast if no fields could be mapped
-          const errorMessages = Object.values(serverErrors).flat();
+          const errorMessages = Object.values(serverErrors).flat()
           toast.error("Validation Error", {
             description: errorMessages.join(", "),
-          });
+          })
         }
       } else if (error.response?.data?.message) {
         // General API error
         form.setError("root", {
           type: "server",
           message: error.response.data.message,
-        });
+        })
         toast.error("Failed to create enrollee", {
           description: error.response.data.message,
-        });
+        })
       } else {
         // Network or unknown error
         form.setError("root", {
           type: "server",
           message: error.message || "Failed to create enrollee",
-        });
+        })
         toast.error("Failed to create enrollee", {
           description:
             error.message || "Please check your connection and try again.",
-        });
+        })
       }
     }
-  };
+  }
   // Helper function to map API field names to form field names
   const mapApiFieldToFormField = (apiField: string): string | null => {
     const fieldMap: Record<string, string> = {
@@ -315,18 +308,18 @@ export function AddEnrolleeForm() {
       address: "street",
       plan_id: "plan",
       // Add more mappings as needed
-    };
+    }
 
-    return fieldMap[apiField] || null;
-  };
+    return fieldMap[apiField] || null
+  }
 
   const handleCancel = () => {
-    form.reset();
-    setEnrolleeImage(null);
-    setDependentImage(null);
-    setHasDependents(false);
-    setOpen(false);
-  };
+    form.reset()
+    setEnrolleeImage(null)
+    setDependentImage(null)
+    setHasDependents(false)
+    setOpen(false)
+  }
 
   const genderOptions = [
     { id: "male", name: "Male" },
@@ -335,8 +328,8 @@ export function AddEnrolleeForm() {
     return {
       value: g.id,
       label: g.name,
-    };
-  });
+    }
+  })
   const maritalStatusOptions = [
     { id: "single", name: "Single" },
     { id: "married", name: "Married" },
@@ -345,7 +338,7 @@ export function AddEnrolleeForm() {
   ].map((status) => ({
     value: status.id,
     label: status.name,
-  }));
+  }))
   const employmentOptions = [
     { id: "employed", name: "Employed" },
     { id: "unemployed", name: "Unemployed" }, // Fixed spelling
@@ -354,7 +347,7 @@ export function AddEnrolleeForm() {
   ].map((status) => ({
     value: status.id,
     label: status.name,
-  }));
+  }))
 
   const userRolesOptions = [
     { id: "principal", name: "Principal" },
@@ -362,7 +355,7 @@ export function AddEnrolleeForm() {
   ].map((role) => ({
     value: role.id,
     label: role.name,
-  }));
+  }))
   return (
     <CustomSheet
       title="Add Enrollee"
@@ -748,5 +741,5 @@ export function AddEnrolleeForm() {
         </form>
       </Form>
     </CustomSheet>
-  );
+  )
 }

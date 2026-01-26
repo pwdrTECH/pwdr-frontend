@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import apiClient from "./client"
 
 /* ============================
@@ -70,7 +70,7 @@ export function useClaims(filters: ClaimFilters = {}) {
 
       const res = await apiClient.post<ClaimsApiResponse>(
         "/fetch-claims.php",
-        body
+        body,
       )
 
       const payload = res.data
@@ -162,44 +162,6 @@ export interface ClaimDetailsRequest {
   tracking_number?: string
 }
 
-export function useClaimDetails(params: ClaimDetailsRequest) {
-  return useQuery({
-    queryKey: ["claim-details", params],
-    enabled: !!(params.claim_id || params.tracking_number),
-    queryFn: async (): Promise<ClaimDetail | null> => {
-      const body = {
-        claim_id: params.claim_id ?? "",
-        tracking_number: params.tracking_number ?? "",
-      }
-
-      const res = await apiClient.post<ClaimDetailsApiResponse>(
-        "/fetch-claim-details.php",
-        body
-      )
-
-      const payload = res.data
-
-      if (!payload) {
-        throw new Error("Failed to fetch claim details")
-      }
-
-      if (payload.status === "success") {
-        return payload.data ?? null
-      }
-
-      if (payload.status === "empty") {
-        return null
-      }
-
-      throw new Error(payload.message || "Failed to fetch claim details")
-    },
-  })
-}
-
-/* ============================
-   Enrollee claim history
-============================ */
-
 export interface EnrolleeClaimHistoryFilters {
   enrolee_id: string // HMO code e.g. "AXA17640612936446"
   page?: number
@@ -225,6 +187,102 @@ export interface EnrolleeClaimHistoryApiResponse {
   [key: string]: any
 }
 
+export type NewClaimServiceLine = {
+  item_id: number
+  item_type: string // "consultation" | "laboratory" | "pharmacy" | "radiology" | ...
+  quantity: number
+  cost: number
+}
+
+export type NewClaimPayload = {
+  provider_id: number
+  enrolee_id: string | number
+  plan_id: number
+  channel: string
+  encounter_date: string
+  diagnosis: string
+  prescription?: string
+  radiology?: string
+  lab?: string
+  services: NewClaimServiceLine[]
+}
+
+export type NewClaimApiResponse = {
+  status: "success" | "error" | string
+  message?: string
+  data?: any
+  [k: string]: any
+}
+
+export function useClaimDetails(params: ClaimDetailsRequest) {
+  return useQuery({
+    queryKey: ["claim-details", params],
+    enabled: !!(params.claim_id || params.tracking_number),
+    queryFn: async (): Promise<ClaimDetail | null> => {
+      const body = {
+        claim_id: params.claim_id ?? "",
+        tracking_number: params.tracking_number ?? "",
+      }
+
+      const res = await apiClient.post<ClaimDetailsApiResponse>(
+        "/fetch-claim-details.php",
+        body,
+      )
+
+      const payload = res.data
+
+      if (!payload) {
+        throw new Error("Failed to fetch claim details")
+      }
+
+      if (payload.status === "success") {
+        return payload.data ?? null
+      }
+
+      if (payload.status === "empty") {
+        return null
+      }
+
+      throw new Error(payload.message || "Failed to fetch claim details")
+    },
+  })
+}
+
+/* ============================
+   New claim
+============================ */
+
+export function useCreateNewClaim() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationKey: ["new-claim"],
+    mutationFn: async (
+      payload: NewClaimPayload,
+    ): Promise<NewClaimApiResponse> => {
+      const res = await apiClient.post<NewClaimApiResponse>(
+        "/new-claim.php",
+        payload,
+      )
+      const body = res.data
+      if (!body) throw new Error("No response from server")
+
+      if (String(body.status).toLowerCase() !== "success") {
+        throw new Error(body.message || "Failed to submit claim")
+      }
+      return body
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["claims"] })
+      await qc.invalidateQueries({ queryKey: ["claim-details"] })
+      await qc.invalidateQueries({ queryKey: ["request-details"] })
+    },
+  })
+}
+/* ============================
+   Enrollee claim history
+============================ */
+
 export function useEnrolleeClaimHistory(filters?: EnrolleeClaimHistoryFilters) {
   const enabled = !!filters?.enrolee_id
 
@@ -249,7 +307,7 @@ export function useEnrolleeClaimHistory(filters?: EnrolleeClaimHistoryFilters) {
 
       const res = await apiClient.post<EnrolleeClaimHistoryApiResponse>(
         "/fetch-enrolee-claim-history.php",
-        baseRequest
+        baseRequest,
       )
 
       const payload = res.data
@@ -303,7 +361,7 @@ export function useEnrolleeClaimHistory(filters?: EnrolleeClaimHistoryFilters) {
       }
 
       throw new Error(
-        payload.message || "Failed to fetch enrollee claim history"
+        payload.message || "Failed to fetch enrollee claim history",
       )
     },
   })

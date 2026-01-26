@@ -1,26 +1,26 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { RequestDetails } from "./_components/request-details";
-import { RequestList } from "./_components/request-list";
-import type { RequestItem } from "./_components/types";
+import { useState } from "react"
+import { ChanneledRequestDetails } from "./_components/request-details"
+import { ChanneledRequestList } from "./_components/request-list"
+import type { RequestItem } from "./_components/types"
 
 export default function ChanneledRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(
-    null,
-  );
+    null
+  )
 
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6">
       {/* Left: list */}
-      <RequestList
+      <ChanneledRequestList
         onSelectRequest={(r) => setSelectedRequest(r)}
         selectedRequestId={selectedRequest?.id}
       />
 
       {/* Right: details or empty state */}
       {selectedRequest ? (
-        <RequestDetails
+        <ChanneledRequestDetails
           requestId={selectedRequest.id}
           selected={selectedRequest}
         />
@@ -38,5 +38,5 @@ export default function ChanneledRequestsPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

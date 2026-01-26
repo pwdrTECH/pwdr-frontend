@@ -1,51 +1,46 @@
-"use client";
+"use client"
 
-import {
-  CopyIcon,
-  EmailIcon,
-  LocationIcon,
-  PhoneIcon,
-} from "@/components/svgs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import type { EnrolleeDetail } from "@/lib/api/beneficiaries";
-import { format } from "date-fns";
+import { CopyIcon, EmailIcon, LocationIcon, PhoneIcon } from "@/components/svgs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import type { EnrolleeDetail } from "@/lib/api/beneficiaries"
+import { format } from "date-fns"
 
 interface ProfileHeaderProps {
-  enrollee?: EnrolleeDetail | null;
-  name: string;
+  enrollee?: EnrolleeDetail | null
+  name: string
 }
 
 export function ProfileHeader({ enrollee, name }: ProfileHeaderProps) {
-  const code = enrollee?.enrolee_id ?? "—";
+  const code = enrollee?.enrolee_id ?? "—"
 
   const dob = enrollee?.dob
     ? format(new Date(enrollee.dob), "MMMM d, yyyy")
-    : "—";
+    : "—"
 
   // Fully safe gender formatter
   const gender = enrollee?.gender
     ? enrollee.gender.charAt(0).toUpperCase() +
       enrollee.gender.slice(1).toLowerCase()
-    : "—";
+    : "—"
 
-  const email = enrollee?.email ?? "—";
-  const phone = enrollee?.phone ?? "—";
+  const email = enrollee?.email ?? "—"
+  const phone = enrollee?.phone ?? "—"
 
   // Safe address concatenation
   const address =
     enrollee?.address ||
     [enrollee?.city, enrollee?.state_name].filter(Boolean).join(", ") ||
-    "—";
+    "—"
 
-  const passport = enrollee?.passport || null;
+  const passport = enrollee?.passport || null
 
   const initials = name
     .split(" ")
     .map((part) => part[0] ?? "")
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase()
 
   return (
     <div className="flex flex-col gap-4">
@@ -71,7 +66,7 @@ export function ProfileHeader({ enrollee, name }: ProfileHeaderProps) {
                       variant="ghost"
                       className="w-fit hover:bg-transparent"
                     >
-                      <CopyIcon />
+                      <CopyIcon className="text-[646668]" />
                     </Button>
                   </span>
                 </h4>
@@ -125,5 +120,5 @@ export function ProfileHeader({ enrollee, name }: ProfileHeaderProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

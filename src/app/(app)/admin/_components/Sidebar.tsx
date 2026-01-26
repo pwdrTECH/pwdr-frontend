@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, PlusIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import * as React from "react"
@@ -39,6 +39,11 @@ const NAV: NavItem[] = [
     label: "Requests",
     icon: MessageTextIcon,
     sublinks: [
+      {
+        href: "/admin/requests/new",
+        label: "New Request",
+        icon: PlusIcon,
+      },
       {
         href: "/admin/requests/pre-auth",
         label: "Pre-Auth Requests",

@@ -1,6 +1,27 @@
 export type IconProps = {
   className?: string
 }
+export function PaperClipIcon({ className }: IconProps) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <title>Paper clip</title>
+      <path
+        d="M21.4383 11.0528L12.2483 20.2428C11.1225 21.3687 9.59552 22.0012 8.00334 22.0012C6.41115 22.0012 4.88418 21.3687 3.75834 20.2428C2.63249 19.117 2 17.59 2 15.9978C2 14.4057 2.63249 12.8787 3.75834 11.7528L12.9483 2.56285C13.6989 1.81229 14.7169 1.39062 15.7783 1.39062C16.8398 1.39063 17.8578 1.81229 18.6083 2.56285C19.3589 3.31341 19.7806 4.33139 19.7806 5.39285C19.7806 6.4543 19.3589 7.47229 18.6083 8.22285L9.40834 17.4128C9.03306 17.7881 8.52406 17.999 7.99334 17.999C7.46261 17.999 6.95362 17.7881 6.57834 17.4128C6.20306 17.0376 5.99222 16.5286 5.99222 15.9978C5.99222 15.4671 6.20306 14.9581 6.57834 14.5828L15.0683 6.10285"
+        stroke="#101828"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 export default function MailIcon({ className }: IconProps) {
   return (
     <svg
@@ -17,6 +38,121 @@ export default function MailIcon({ className }: IconProps) {
         d="M2.02734 4.96276L7.0397 8.47141C7.44558 8.75553 7.64853 8.89759 7.86927 8.95261C8.06426 9.00122 8.2682 9.00122 8.46319 8.95261C8.68394 8.89759 8.88688 8.75553 9.29277 8.47141L14.3051 4.96276M4.97401 12.9433H11.3585C12.3899 12.9433 12.9056 12.9433 13.2996 12.7426C13.6461 12.566 13.9278 12.2843 14.1044 11.9377C14.3051 11.5438 14.3051 11.0281 14.3051 9.99665V6.06776C14.3051 5.03633 14.3051 4.52062 14.1044 4.12666C13.9278 3.78013 13.6461 3.49839 13.2996 3.32182C12.9056 3.12109 12.3899 3.12109 11.3585 3.12109H4.97401C3.94258 3.12109 3.42687 3.12109 3.03291 3.32182C2.68638 3.49839 2.40464 3.78013 2.22807 4.12666C2.02734 4.52062 2.02734 5.03633 2.02734 6.06776V9.99665C2.02734 11.0281 2.02734 11.5438 2.22807 11.9377C2.40464 12.2843 2.68638 12.566 3.03291 12.7426C3.42687 12.9433 3.94258 12.9433 4.97401 12.9433Z"
         stroke="#667085"
         strokeWidth="1.22778"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+export function MinusIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>minus icon</title>
+      <path
+        d="M8 12H16"
+        stroke="#DA4949"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z"
+        stroke="#DA4949"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+export function CalendarAltIcon({ className }: IconProps) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <title>Calendar icon</title>
+      <path
+        d="M6.66406 1.66406V4.16406"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.3359 1.66406V4.16406"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.91406 7.57812H17.0807"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17.5 7.08073V14.1641C17.5 16.6641 16.25 18.3307 13.3333 18.3307H6.66667C3.75 18.3307 2.5 16.6641 2.5 14.1641V7.08073C2.5 4.58073 3.75 2.91406 6.66667 2.91406H13.3333C16.25 2.91406 17.5 4.58073 17.5 7.08073Z"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.0762 11.4167H13.0836"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.0762 13.9167H13.0836"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.99803 11.4167H10.0055"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.99803 13.9167H10.0055"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.91209 11.4167H6.91957"
+        stroke="#666666"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.91209 13.9167H6.91957"
+        stroke="#666666"
+        strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -1253,6 +1389,33 @@ export function LocationIcon({ className }: IconProps) {
     </svg>
   )
 }
+export function SendIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 19 19"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Send icon</title>
+      <path
+        d="M7.40349 3.29227L14.0662 6.62361C17.055 8.11804 17.055 10.5621 14.0662 12.0565L7.40349 15.3878C2.9202 17.6295 1.09108 15.7926 3.33273 11.317L4.00989 9.97051C4.18113 9.62803 4.18113 9.05984 4.00989 8.71736L3.33273 7.36304C1.09108 2.88753 2.92799 1.05063 7.40349 3.29227Z"
+        stroke="white"
+        strokeWidth="1.40103"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.23438 9.34375H8.43746"
+        stroke="white"
+        strokeWidth="1.40103"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 export function EmailIcon() {
   return (
     <svg
@@ -1298,14 +1461,14 @@ export function CopyIcon({ className }: IconProps) {
       <g opacity="0.2">
         <path
           d="M10.6693 8.6026V11.4026C10.6693 13.7359 9.73594 14.6693 7.4026 14.6693H4.6026C2.26927 14.6693 1.33594 13.7359 1.33594 11.4026V8.6026C1.33594 6.26927 2.26927 5.33594 4.6026 5.33594H7.4026C9.73594 5.33594 10.6693 6.26927 10.6693 8.6026Z"
-          stroke="#646668"
+          stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <path
           d="M14.6693 4.6026V7.4026C14.6693 9.73594 13.7359 10.6693 11.4026 10.6693H10.6693V8.6026C10.6693 6.26927 9.73594 5.33594 7.4026 5.33594H5.33594V4.6026C5.33594 2.26927 6.26927 1.33594 8.6026 1.33594H11.4026C13.7359 1.33594 14.6693 2.26927 14.6693 4.6026Z"
-          stroke="#646668"
+          stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -2336,15 +2499,15 @@ export function MarkedaltIcon({ className }: IconProps) {
             d="M8.00261 14.6693C8.87825 14.6704 9.74547 14.4984 10.5544 14.1633C11.3634 13.8282 12.0982 13.3366 12.7166 12.7166C13.3366 12.0982 13.8282 11.3634 14.1633 10.5544C14.4984 9.74547 14.6704 8.87825 14.6693 8.00261C14.6704 7.12697 14.4984 6.25975 14.1633 5.45077C13.8282 4.64179 13.3366 3.907 12.7166 3.28861C12.0982 2.66866 11.3634 2.17702 10.5544 1.84191C9.74547 1.50681 8.87825 1.33486 8.00261 1.33594C7.12697 1.33486 6.25975 1.50681 5.45077 1.84191C4.64179 2.17702 3.907 2.66866 3.28861 3.28861C2.66866 3.907 2.17702 4.64179 1.84191 5.45077C1.50681 6.25975 1.33486 7.12697 1.33594 8.00261C1.33486 8.87825 1.50681 9.74547 1.84191 10.5544C2.17702 11.3634 2.66866 12.0982 3.28861 12.7166C3.907 13.3366 4.64179 13.8282 5.45077 14.1633C6.25975 14.4984 7.12697 14.6704 8.00261 14.6693Z"
             fill="white"
             stroke="white"
-            stroke-width="1.33333"
-            stroke-linejoin="round"
+            strokeWidth="1.33333"
+            strokeLinejoin="round"
           />
           <path
             d="M5.33594 8L7.33594 10L11.3359 6"
             stroke="black"
-            stroke-width="1.33333"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="1.33333"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </mask>
         <g mask="url(#mask0_5886_79990)">

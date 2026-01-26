@@ -79,7 +79,7 @@ function Progress({ pct, tone }: { pct: number; tone: "green" | "red" }) {
         <div
           className={cn(
             "h-full",
-            tone === "green" ? "bg-[#06A81F]" : "bg-[#DE0303]"
+            tone === "green" ? "bg-[#06A81F]" : "bg-[#DE0303]",
           )}
           style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
         />
@@ -133,7 +133,7 @@ const ITEMS: TreatmentItem[] = [
 
 export function ResultAnalysisDetailSheet({ open, onOpenChange }: Props) {
   const [openInsightFor, setOpenInsightFor] = React.useState<string | null>(
-    null
+    null,
   )
   const sheetContentRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -154,7 +154,7 @@ export function ResultAnalysisDetailSheet({ open, onOpenChange }: Props) {
 
   function handleInsightAction(
     itemId: string,
-    action: "approve" | "reject" | "query"
+    action: "approve" | "reject" | "query",
   ) {
     console.log("AI Insight action:", { itemId, action })
     setOpenInsightFor(null)
@@ -177,7 +177,7 @@ export function ResultAnalysisDetailSheet({ open, onOpenChange }: Props) {
           className={cn(
             "fixed left-36 top-6 z-[180]",
             "h-10 w-10 rounded-full bg-[#00000040] backdrop-blur-[5.76px] text-white",
-            "inline-flex items-center justify-center shadow-sm"
+            "inline-flex items-center justify-center shadow-sm",
           )}
         >
           <X className="h-4 w-4" />
@@ -315,7 +315,7 @@ export function ResultAnalysisDetailSheet({ open, onOpenChange }: Props) {
                         }
                         data-no-print="true"
                       >
-                        <CopyIcon />
+                        <CopyIcon className="text-[646668]" />
                       </button>
                     </div>
                   </div>
@@ -553,10 +553,10 @@ function Stat({
     tone === "green"
       ? "text-[#0EA300]"
       : tone === "amber"
-      ? "text-[#DC9700]"
-      : tone === "red"
-      ? "text-[#D90101]"
-      : "text-[#344054]"
+        ? "text-[#DC9700]"
+        : tone === "red"
+          ? "text-[#D90101]"
+          : "text-[#344054]"
   return (
     <div>
       <div className="text-[14px] leading-5 text-[#6F6F6F]">{label}</div>

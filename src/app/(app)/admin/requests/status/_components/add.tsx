@@ -434,7 +434,7 @@ export default function ProcessRequest() {
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 21 }).map((_, i) => (
-                          <SelectItem key={i} value={String(i)}>
+                          <SelectItem key={`i-${i + 1}`} value={String(i)}>
                             {i}
                           </SelectItem>
                         ))}
@@ -497,7 +497,7 @@ export default function ProcessRequest() {
           </div>
 
           {/* Hidden submit so Enter can submit from fields */}
-          <button type="submit" className="sr-only" aria-hidden="true" />
+          <button type="submit" className="sr-only" />
         </form>
       </Form>
     </CustomSheet>

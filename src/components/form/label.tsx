@@ -1,11 +1,11 @@
 "use client"
 
-import * as React from "react"
 import { Label as UILabel } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import type { ComponentProps, ReactNode } from "react"
 
-type Props = React.ComponentProps<typeof UILabel> & {
-  title?: React.ReactNode
+type Props = ComponentProps<typeof UILabel> & {
+  title?: ReactNode
 }
 
 export default function Label({
@@ -20,7 +20,7 @@ export default function Label({
       htmlFor={htmlFor}
       className={cn(
         "text-[14.93px] leading-[21.33px] tracking-normal font-medium font-hnd text-[#344054]",
-        className
+        className,
       )}
       {...rest}
     >

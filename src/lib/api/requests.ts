@@ -93,8 +93,8 @@ export function useRequests(filters: RequestFilters = {}) {
         page: filters.page ?? 1,
         limit: filters.limit ?? 20,
         search: filters.search ?? "",
-        channel: normalizeFilterValue(filters.channel), // ✅ undefined when "all"
-        status: normalizeFilterValue(filters.status), // ✅ undefined when "all"
+        channel: normalizeFilterValue(filters.channel),
+        status: normalizeFilterValue(filters.status),
       }
 
       const res = await apiClient.post<RequestsApiResponse>(
