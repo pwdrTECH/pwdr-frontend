@@ -35,6 +35,15 @@ type TopItem = {
   color: string
   avatarUrl?: string
 }
+const TOP_COLORS = [
+  "#1671D9",
+  "#02A32D",
+  "#F4BF13",
+  "#F85E5E",
+  "#7B61FF",
+  "#12B76A",
+]
+const OTHERS_COLOR = "#98A2B3"
 
 function parseCostRange(costRange: string): {
   min_cost: string
@@ -104,7 +113,7 @@ export function UtilizationByEnrolleeView() {
 
   const cost = React.useMemo(
     () => parseCostRange(filters.costRange),
-    [filters.costRange]
+    [filters.costRange],
   )
 
   const apiFilters = React.useMemo(
@@ -128,7 +137,7 @@ export function UtilizationByEnrolleeView() {
       filters.scheme,
       cost.min_cost,
       cost.max_cost,
-    ]
+    ],
   )
 
   const utilQuery = useUtilizationByEnrollee(apiFilters)
@@ -152,7 +161,7 @@ export function UtilizationByEnrolleeView() {
       mapped = mapped.filter(
         (r) =>
           r.enrolleeName.toLowerCase().includes(s) ||
-          r.enrolleeId.toLowerCase().includes(s)
+          r.enrolleeId.toLowerCase().includes(s),
       )
     }
 
@@ -202,7 +211,37 @@ export function UtilizationByEnrolleeView() {
   }, [tableRows, setConfig])
 
   // Top 7 card (keep empty until backend provides it)
-  const top7 = React.useMemo<TopItem[]>(() => [], [])
+  const top7 = React.useMemo<TopItem[]>(() => {
+    const list = utilQuery.data?.data?.top_enrolees
+    if (!Array.isArray(list) || list.length === 0) return []
+
+    const totalUtil = toNumber(summary?.total_utilization_amount ?? 0)
+    const denom =
+      totalUtil > 0
+        ? totalUtil
+        : list.reduce((a, b) => a + toNumber(b.utilization), 0)
+
+    return list.slice(0, 7).map((it, idx) => {
+      const nameRaw = String(it.enrolee_name ?? "—").trim()
+      const idRaw = it.enrolee_id == null ? "" : String(it.enrolee_id)
+      const total = toNumber(it.utilization)
+
+      const isOthers =
+        nameRaw.toLowerCase() === "others" || idRaw.toLowerCase() === "others"
+
+      const percent = denom > 0 ? Math.round((total / denom) * 100) : 0
+
+      return {
+        id: isOthers ? "others" : idRaw || `${nameRaw}-${idx}`,
+        name: isOthers ? "Others" : nameRaw,
+        code: isOthers ? undefined : idRaw || undefined,
+        total,
+        percent,
+        color: isOthers ? OTHERS_COLOR : TOP_COLORS[idx % TOP_COLORS.length],
+        avatarUrl: undefined, // set when backend provides
+      }
+    })
+  }, [utilQuery.data?.data?.top_enrolees, summary])
 
   return (
     <div className="w-full">

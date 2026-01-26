@@ -10,6 +10,8 @@ import { EnrolleeStatsRow } from "./EnrolleeStatsRow"
 import { EnrolleeTable } from "./EnrolleeTable"
 import { StatusComparisonCard } from "./StatusComparisonCard"
 import type { EnrolleeRow } from "./types"
+import type { RangeKey } from "./StatusRangePills"
+import { aggregateSeries } from "./aggregateSeries"
 
 const PAGE_SIZE = 10
 const EMPTY_LIST: any[] = []
@@ -49,20 +51,20 @@ function formatMonthYear(dateStr?: string) {
 
 function mapApiToEnrolleeRow(
   item: Record<string, any>,
-  index: number
+  index: number,
 ): EnrolleeRow {
   const enrolleeName = String(
     item.enrolee_name ??
       item.enrollee_name ??
       item.patient_name ??
       item.full_name ??
-      ""
+      "",
   )
   const enrolleeId = String(
-    item.enrolee_id ?? item.enrollee_id ?? item.patient_id ?? ""
+    item.enrolee_id ?? item.enrollee_id ?? item.patient_id ?? "",
   )
   const provider = String(
-    item.provider_name ?? item.provider ?? item.hospital ?? ""
+    item.provider_name ?? item.provider ?? item.hospital ?? "",
   )
   const plan = String(item.plan ?? item.plan_name ?? item.plan_id ?? "")
   const scheme = String(item.scheme ?? item.scheme_name ?? item.scheme_id ?? "")
@@ -76,7 +78,7 @@ function mapApiToEnrolleeRow(
       : Number(String(rawAmount ?? "0").replace(/,/g, "")) || 0
 
   const requestDate = String(
-    item.request_date ?? item.date ?? item.created_at ?? ""
+    item.request_date ?? item.date ?? item.created_at ?? "",
   )
   const requestTime = String(item.request_time ?? item.time ?? "")
 
@@ -101,6 +103,29 @@ function mapApiToEnrolleeRow(
   } as unknown as EnrolleeRow
 }
 
+function extractRows(result: any): any[] {
+  if (!result) return []
+  if (Array.isArray(result?.data)) return result.data
+  if (Array.isArray(result?.data?.data)) return result.data.data
+  return []
+}
+
+/** Month series shape consumed by aggregateSeries + ClaimsComparisonCard */
+export type MonthSeries = {
+  m: string // label on X axis
+  month: number
+  year: number
+  approved: number
+  rejected: number
+  pending: number
+}
+
+function toNumber(v: any) {
+  const n =
+    typeof v === "number" ? v : Number(String(v ?? "0").replace(/,/g, ""))
+  return Number.isFinite(n) ? n : 0
+}
+
 export function RequestsByEnrolleeView() {
   const { q } = useReportQuery()
   const { setConfig } = useReportExport()
@@ -118,9 +143,12 @@ export function RequestsByEnrolleeView() {
 
   const [page, setPage] = useState(1)
 
+  /** ✅ shared range for both charts */
+  const [range, setRange] = useState<RangeKey>("month")
+
   const cost = useMemo(
     () => parseCostRange(filters.costRange),
-    [filters.costRange]
+    [filters.costRange],
   )
 
   const apiFilters = useMemo(
@@ -146,7 +174,7 @@ export function RequestsByEnrolleeView() {
       cost.max_cost,
       startDate,
       endDate,
-    ]
+    ],
   )
 
   const reqQuery = useEnroleeRequests(apiFilters)
@@ -176,16 +204,16 @@ export function RequestsByEnrolleeView() {
 
     if (filters.service)
       mapped = mapped.filter(
-        (r: any) => String(r.service ?? "") === filters.service
+        (r: any) => String(r.service ?? "") === filters.service,
       )
     if (filters.location)
       mapped = mapped.filter(
-        (r: any) => String(r.location ?? "") === filters.location
+        (r: any) => String(r.location ?? "") === filters.location,
       )
 
     if (filters.scheme)
       mapped = mapped.filter(
-        (r: any) => String(r.scheme ?? "") === filters.scheme
+        (r: any) => String(r.scheme ?? "") === filters.scheme,
       )
     if (filters.plan)
       mapped = mapped.filter((r: any) => String(r.plan ?? "") === filters.plan)
@@ -193,17 +221,72 @@ export function RequestsByEnrolleeView() {
     return mapped as EnrolleeRow[]
   }, [apiList, q, filters])
 
-  const series = useMemo(() => [], [])
+  const monthSeries: MonthSeries[] = useMemo(() => {
+    const list = reqQuery.data?.data?.monthly_statistics
+    if (!Array.isArray(list)) return []
 
-  /**
-   * ✅ Export config without infinite loop:
-   * - Don’t rebuild config from scratch every render
-   * - Only call setConfig when rows reference changes meaningfully
-   */
+    // ensure sorted month/year
+    const sorted = [...list].sort((a: any, b: any) => {
+      const ya = toNumber(a?.year)
+      const yb = toNumber(b?.year)
+      if (ya !== yb) return ya - yb
+      return toNumber(a?.month) - toNumber(b?.month)
+    })
+
+    return sorted.map((it: any) => {
+      const month = toNumber(it?.month)
+      const year = toNumber(it?.year)
+      const monthName = String(it?.month_name ?? "").trim()
+      const m = monthName
+        ? `${monthName.slice(0, 3)} ${year}`
+        : `${month}/${year}`
+
+      return {
+        m,
+        month,
+        year,
+        approved: toNumber(it?.approved_count),
+        rejected: toNumber(it?.rejected_count),
+        pending: toNumber(it?.pending_count),
+      }
+    })
+  }, [reqQuery.data?.data?.monthly_statistics])
+
+  const statusCountsForRange = useMemo(() => {
+    const aggregated = aggregateSeries(monthSeries as any, range) as any[]
+    return aggregated.reduce(
+      (acc, row) => {
+        acc.approved += toNumber(row?.approved)
+        acc.rejected += toNumber(row?.rejected)
+        acc.pending += toNumber(row?.pending)
+        return acc
+      },
+      { approved: 0, rejected: 0, pending: 0 },
+    )
+  }, [monthSeries, range])
+  const statusSummary = useMemo(() => {
+    return {
+      approved_count: statusCountsForRange.approved,
+      rejected_count: statusCountsForRange.rejected,
+      pending_count: statusCountsForRange.pending,
+
+      approved_amount: toNumber(summary?.total_approved_claims_amount),
+      rejected_amount: toNumber(summary?.rejected_claims_amount),
+      pending_amount: toNumber(summary?.pending_claims_amount),
+
+      total_count:
+        toNumber(summary?.total_requests_count) ||
+        statusCountsForRange.approved +
+          statusCountsForRange.rejected +
+          statusCountsForRange.pending,
+
+      total_amount: toNumber(summary?.total_claims_amount),
+    }
+  }, [summary, statusCountsForRange])
+
   const rowsRef = useRef<EnrolleeRow[] | null>(null)
 
   useEffect(() => {
-    // prevents repetitive setConfig calls when rows is the same reference
     if (rowsRef.current === rows) return
     rowsRef.current = rows
 
@@ -275,15 +358,16 @@ export function RequestsByEnrolleeView() {
       />
 
       <div className="px-6 py-6 space-y-10.5">
-        <ClaimsComparisonCard data={series as any} />
+        <ClaimsComparisonCard
+          data={monthSeries as any}
+          range={range}
+          onRangeChange={setRange}
+        />
+
         <StatusComparisonCard
-          summary={{
-            approved_amount: summary?.total_approved_claims_amount ?? 0,
-            rejected_amount: summary?.rejected_claims_amount ?? 0,
-            pending_amount: summary?.pending_claims_amount ?? 0,
-            total_amount: summary?.total_claims_amount ?? 0,
-            total_count: summary?.total_requests_count ?? 0,
-          }}
+          summary={statusSummary as any}
+          range={range}
+          onRangeChange={setRange}
         />
       </div>
     </div>

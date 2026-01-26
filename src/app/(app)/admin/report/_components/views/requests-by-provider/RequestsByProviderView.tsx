@@ -20,6 +20,7 @@ const EMPTY_LIST: any[] = []
 const EMPTY_ROWS: ProviderRow[] = []
 
 type Filters = { service: string; location: string }
+type ProviderSeriesPoint = { m: string; requests: number; cost: number }
 
 function fmtNaira(n: number) {
   return `₦ ${Number(n || 0).toLocaleString("en-NG")}`
@@ -37,7 +38,7 @@ function pct(part: number, total: number) {
 
 function mapApiToProviderRow(
   item: Record<string, any>,
-  index: number
+  index: number,
 ): ProviderRow {
   const providerName = String(item.provider_name ?? "—")
   const providerCode = String(item.provider_code ?? "")
@@ -62,23 +63,23 @@ function mapApiToProviderRow(
     location: String(item.location ?? ""),
   }
 }
-
-function buildProviderStatusData(summary?: any): StatusDatum[] {
+function buildProviderStatusData(
+  summary: any,
+  rows: ProviderRow[],
+): StatusDatum[] {
   const totalCount = toNumber(summary?.total_requests_count ?? 0)
-  const deniedCount = toNumber(summary?.total_denied_count ?? 0)
+
+  const deniedCount = rows.reduce((a, r) => a + toNumber(r.denied), 0)
+  const approvedCount = rows.reduce((a, r) => a + toNumber(r.approved), 0)
+  const pendingCount = Math.max(0, totalCount - approvedCount - deniedCount)
 
   const approvedAmount = toNumber(summary?.total_approved_amount ?? 0)
-  const billedAmount = toNumber(summary?.total_billed_amount ?? 0)
-
-  const approvedCount = toNumber(
-    summary?.total_approved_count ?? totalCount - deniedCount
-  )
 
   return [
     {
       key: "approved",
       label: "Approved",
-      value: Math.max(0, approvedCount),
+      value: approvedCount,
       amount: fmtNaira(approvedAmount),
       percentChip: pct(approvedCount, totalCount),
       color: "#02A32D",
@@ -86,7 +87,7 @@ function buildProviderStatusData(summary?: any): StatusDatum[] {
     {
       key: "denied",
       label: "Denied",
-      value: Math.max(0, deniedCount),
+      value: deniedCount,
       amount: "—",
       percentChip: pct(deniedCount, totalCount),
       color: "#F85E5E",
@@ -94,9 +95,9 @@ function buildProviderStatusData(summary?: any): StatusDatum[] {
     {
       key: "pending",
       label: "Pending",
-      value: 0,
+      value: pendingCount,
       amount: "—",
-      percentChip: "0%",
+      percentChip: pct(pendingCount, totalCount),
       color: "#F4BF13",
     },
     {
@@ -134,7 +135,7 @@ export function RequestsByProviderView() {
       patient_id: "",
       patient_name: "",
     }),
-    [page, startDate, endDate]
+    [page, startDate, endDate],
   )
 
   const reqQuery = useProviderRequests(apiFilters)
@@ -157,7 +158,7 @@ export function RequestsByProviderView() {
       mapped = mapped.filter(
         (r) =>
           r.providerName.toLowerCase().includes(s) ||
-          r.providerCode.toLowerCase().includes(s)
+          r.providerCode.toLowerCase().includes(s),
       )
     }
 
@@ -170,8 +171,8 @@ export function RequestsByProviderView() {
   }, [apiList, q, filters])
 
   const statusData = React.useMemo(
-    () => buildProviderStatusData(summary),
-    [summary]
+    () => buildProviderStatusData(summary, rows),
+    [summary, rows],
   )
 
   React.useEffect(() => {
@@ -207,8 +208,18 @@ export function RequestsByProviderView() {
     return () => setConfig(null)
   }, [setConfig])
 
-  const series = React.useMemo(() => [], [])
+  const series: ProviderSeriesPoint[] = React.useMemo(() => {
+    const ms = reqQuery.data?.data?.monthly_statistics
+    if (!Array.isArray(ms)) return []
 
+    return [...ms]
+      .sort((a, b) => a.year - b.year || a.month - b.month)
+      .map((it) => ({
+        m: `${String(it.month_name).slice(0, 3)} ${it.year}`,
+        requests: toNumber(it.visit_count), // ✅ chart expects "requests"
+        cost: toNumber(it.total_cost), // ✅ chart expects "cost"
+      }))
+  }, [reqQuery.data?.data?.monthly_statistics])
   return (
     <div className="w-full h-full">
       <ProviderFiltersRow

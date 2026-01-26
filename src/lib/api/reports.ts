@@ -17,12 +17,11 @@ export interface ReportsPagination {
 }
 
 export type ApiStatus = "success" | "empty" | "error" | string
-
-/**
- * Generic report response.
- * NOTE: Some endpoints return extra fields on `data` (e.g. state_statistics).
- * For those, you can set `TExtra` to add them into `data`.
- */
+export type UtilizationTopEnrollee = {
+  enrolee_id: string | null
+  enrolee_name: string | null
+  utilization: number
+}
 export type ReportResponse<TSummary, TRow, TService = unknown, TExtra = {}> = {
   status: ApiStatus
   data?: {
@@ -55,7 +54,7 @@ function stableStringify(value: any): string {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
   const keys = Object.keys(value).sort()
   const entries = keys.map(
-    (k) => `${JSON.stringify(k)}:${stableStringify((value as any)[k])}`
+    (k) => `${JSON.stringify(k)}:${stableStringify((value as any)[k])}`,
   )
   return `{${entries.join(",")}}`
 }
@@ -168,7 +167,7 @@ async function fetchReport<TSummary, TRow, TService = unknown, TExtra = {}>({
     : []
 
   const safeTopServices: TService[] = Array.isArray(
-    (incoming as any)?.top_services
+    (incoming as any)?.top_services,
   )
     ? ((incoming as any).top_services as TService[])
     : []
@@ -238,7 +237,14 @@ export interface EnroleeRequestListItem {
 export interface EnroleeRequestsTopService {
   [key: string]: any
 }
-
+export type EnroleeMonthlyStat = {
+  month: number
+  month_name: string
+  year: number
+  approved_count: number
+  rejected_count: number
+  pending_count: number
+}
 const EMPTY_ENROLEE_REQUESTS_SUMMARY: EnroleeRequestsSummary = {
   total_requests_count: 0,
   total_claims_amount: 0,
@@ -250,7 +256,7 @@ const EMPTY_ENROLEE_REQUESTS_SUMMARY: EnroleeRequestsSummary = {
 
 export function useEnroleeRequests(
   filters: EnroleeRequestsFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -261,7 +267,8 @@ export function useEnroleeRequests(
       ReportResponse<
         EnroleeRequestsSummary,
         EnroleeRequestListItem,
-        EnroleeRequestsTopService
+        EnroleeRequestsTopService,
+        { monthly_statistics: EnroleeMonthlyStat[] }
       >
     > => {
       const page = filters.page ?? 1
@@ -285,7 +292,8 @@ export function useEnroleeRequests(
       const normalized = await fetchReport<
         EnroleeRequestsSummary,
         EnroleeRequestListItem,
-        EnroleeRequestsTopService
+        EnroleeRequestsTopService,
+        { monthly_statistics: EnroleeMonthlyStat[] }
       >({
         endpoint: "fetch-enrolee-requests",
         body,
@@ -303,6 +311,12 @@ export function useEnroleeRequests(
           },
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
+          monthly_statistics: Array.isArray(
+            (normalized.data as any)?.monthly_statistics,
+          )
+            ? ((normalized.data as any)
+                .monthly_statistics as EnroleeMonthlyStat[])
+            : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
         },
@@ -310,7 +324,6 @@ export function useEnroleeRequests(
     },
   })
 }
-
 /* ----------------------------
    B) Provider requests report
 ---------------------------- */
@@ -333,7 +346,13 @@ export interface ProviderRequestListItem {
   total_estimated_cost: number
   [key: string]: any
 }
-
+export type ProviderRequestsMonthlyStat = {
+  month: number
+  month_name: string
+  year: number
+  visit_count: number
+  total_cost: number
+}
 export interface ProviderRequestsTopService {
   [key: string]: any
 }
@@ -348,7 +367,7 @@ const EMPTY_PROVIDER_REQUESTS_SUMMARY: ProviderRequestsSummary = {
 
 export function useProviderRequests(
   filters: ProviderRequestsFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -359,7 +378,8 @@ export function useProviderRequests(
       ReportResponse<
         ProviderRequestsSummary,
         ProviderRequestListItem,
-        ProviderRequestsTopService
+        ProviderRequestsTopService,
+        { monthly_statistics: ProviderRequestsMonthlyStat[] }
       >
     > => {
       const page = filters.page ?? 1
@@ -377,7 +397,8 @@ export function useProviderRequests(
       const normalized = await fetchReport<
         ProviderRequestsSummary,
         ProviderRequestListItem,
-        ProviderRequestsTopService
+        ProviderRequestsTopService,
+        { monthly_statistics: ProviderRequestsMonthlyStat[] }
       >({
         endpoint: "fetch-provider-requests",
         body,
@@ -395,6 +416,12 @@ export function useProviderRequests(
           },
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
+          monthly_statistics: Array.isArray(
+            (normalized.data as any)?.monthly_statistics,
+          )
+            ? ((normalized.data as any)
+                .monthly_statistics as ProviderRequestsMonthlyStat[])
+            : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
         },
@@ -402,7 +429,6 @@ export function useProviderRequests(
     },
   })
 }
-
 /* ----------------------------
    C) Utilization by Enrollee
 ---------------------------- */
@@ -440,7 +466,7 @@ const EMPTY_UTIL_BY_ENROLLEE_SUMMARY: UtilizationByEnrolleeSummary = {
 
 export function useUtilizationByEnrollee(
   filters: UtilizationFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -451,7 +477,8 @@ export function useUtilizationByEnrollee(
       ReportResponse<
         UtilizationByEnrolleeSummary,
         UtilizationByEnrolleeListItem,
-        UtilizationByEnrolleeTopService
+        UtilizationByEnrolleeTopService,
+        { top_enrolees: UtilizationTopEnrollee[] }
       >
     > => {
       const page = filters.page ?? 1
@@ -473,7 +500,8 @@ export function useUtilizationByEnrollee(
       const normalized = await fetchReport<
         UtilizationByEnrolleeSummary,
         UtilizationByEnrolleeListItem,
-        UtilizationByEnrolleeTopService
+        UtilizationByEnrolleeTopService,
+        { top_enrolees: UtilizationTopEnrollee[] }
       >({
         endpoint: "fetch-utilization-by-enrolee",
         body,
@@ -491,6 +519,10 @@ export function useUtilizationByEnrollee(
           },
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
+          top_enrolees: Array.isArray((normalized.data as any)?.top_enrolees)
+            ? ((normalized.data as any)
+                .top_enrolees as UtilizationTopEnrollee[])
+            : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
         },
@@ -525,7 +557,7 @@ export type UtilizationDiagnosisFilters = BaseReportFilters & {
 
 export function useUtilizationByDiagnosis(
   filters: UtilizationDiagnosisFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -611,7 +643,7 @@ export type UtilizationByOrganizationFilters = BaseReportFilters & {
 
 export function useUtilizationByOrganization(
   filters: UtilizationByOrganizationFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -684,14 +716,15 @@ export interface UtilizationByServicesSummary {
 
 export interface UtilizationByServicesListItem {
   service_name: string
-  enrolee_id: string
-  enrolee_name: string
+  enrolee_id: string | null
+  enrolee_name: string | null
   provider: string
   location: string
   cost: number
+  scheme?: string | null
+  plan?: string | null
   [key: string]: any
 }
-
 export interface UtilizationByServicesTopService {
   service_name: string
   enrolee_count: number | null
@@ -714,7 +747,7 @@ export type MonthlyStatisticsItem = {
 
 export function useUtilizationByServices(
   filters: UtilizationFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -760,6 +793,7 @@ export function useUtilizationByServices(
       return {
         ...normalized,
         data: {
+          ...(normalized.data as any),
           summary: {
             ...EMPTY_UTIL_BY_SERVICES_SUMMARY,
             ...(normalized.data?.summary ?? {}),
@@ -767,9 +801,10 @@ export function useUtilizationByServices(
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
           monthly_statistics: Array.isArray(
-            (normalized.data as any)?.monthly_statistics
+            (normalized.data as any)?.monthly_statistics,
           )
-            ? (normalized.data as any).monthly_statistics
+            ? ((normalized.data as any)
+                .monthly_statistics as MonthlyStatisticsItem[])
             : [],
           pagination:
             normalized.data?.pagination ?? makeEmptyPagination(page, limit),
@@ -831,7 +866,7 @@ type UtilByLocationExtra = {
 
 export function useUtilizationByLocation(
   filters: UtilizationByLocationFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -892,7 +927,7 @@ export function useUtilizationByLocation(
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
           state_statistics: Array.isArray(
-            (normalized.data as any)?.state_statistics
+            (normalized.data as any)?.state_statistics,
           )
             ? ((normalized.data as any)
                 .state_statistics as UtilizationByLocationStateStat[])
@@ -952,7 +987,7 @@ export type ProviderTopProvider = {
 }
 export function useUtilizationByProvider(
   filters: UtilizationFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -1008,7 +1043,7 @@ export function useUtilizationByProvider(
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
           monthly_statistics: Array.isArray(
-            (normalized.data as any)?.monthly_statistics
+            (normalized.data as any)?.monthly_statistics,
           )
             ? (normalized.data as any).monthly_statistics
             : [],
@@ -1051,7 +1086,7 @@ const EMPTY_UTIL_BY_SCHEME_SUMMARY: UtilizationBySchemeSummary = {}
 
 export function useUtilizationByScheme(
   filters: UtilizationFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 
@@ -1105,7 +1140,7 @@ export function useUtilizationByScheme(
           line_listing: normalized.data?.line_listing ?? [],
           top_services: normalized.data?.top_services ?? [],
           monthly_statistics: Array.isArray(
-            (normalized.data as any)?.monthly_statistics
+            (normalized.data as any)?.monthly_statistics,
           )
             ? (normalized.data as any).monthly_statistics
             : [],
@@ -1159,7 +1194,7 @@ export type OverdueReportFilters = BaseReportFilters & {
 
 export function useOverdueReport(
   filters: OverdueReportFilters = {},
-  options?: Pick<UseQueryOptions<any>, "enabled">
+  options?: Pick<UseQueryOptions<any>, "enabled">,
 ) {
   const key = stableKey(filters)
 

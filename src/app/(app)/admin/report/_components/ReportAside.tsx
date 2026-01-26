@@ -49,7 +49,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
             onClick={() => onActiveChange("requests_by_enrollee")}
             className={cn(
               tabBase,
-              active === "requests_by_enrollee" ? tabActive : tabInactive
+              active === "requests_by_enrollee" ? tabActive : tabInactive,
             )}
           >
             Requests by enrollee
@@ -61,7 +61,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
             onClick={() => onActiveChange("requests_by_provider")}
             className={cn(
               tabBase,
-              active === "requests_by_provider" ? tabActive : tabInactive
+              active === "requests_by_provider" ? tabActive : tabInactive,
             )}
           >
             Requests by provider
@@ -75,7 +75,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                 "flex items-center justify-between",
                 "bg-white text-[#344054] hover:bg-[#F7FAFF]",
                 "font-hnd text-[14px]/[20px] font-normal tracking-normal",
-                utilOpen ? "text-[#101828] font-bold" : ""
+                utilOpen ? "text-[#101828] font-bold" : "",
               )}
               aria-expanded={utilOpen}
             >
@@ -83,7 +83,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
               <span
                 className={cn(
                   "text-[#98A2B3] transition-transform rotate-180",
-                  utilOpen ? "rotate-0" : "rotate-180"
+                  utilOpen ? "rotate-0" : "rotate-180",
                 )}
               >
                 <AngleUp />
@@ -97,7 +97,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_enrollee")}
                   className={cn(
                     tabBase,
-                    active === "util_by_enrollee" ? tabActive : tabInactive
+                    active === "util_by_enrollee" ? tabActive : tabInactive,
                   )}
                 >
                   By enrollee
@@ -108,7 +108,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_diagnosis")}
                   className={cn(
                     tabBase,
-                    active === "util_by_diagnosis" ? tabActive : tabInactive
+                    active === "util_by_diagnosis" ? tabActive : tabInactive,
                   )}
                 >
                   By Diagnosis
@@ -119,7 +119,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_services")}
                   className={cn(
                     tabBase,
-                    active === "util_by_services" ? tabActive : tabInactive
+                    active === "util_by_services" ? tabActive : tabInactive,
                   )}
                 >
                   By Services
@@ -130,7 +130,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_location")}
                   className={cn(
                     tabBase,
-                    active === "util_by_location" ? tabActive : tabInactive
+                    active === "util_by_location" ? tabActive : tabInactive,
                   )}
                 >
                   By Location
@@ -141,7 +141,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_organization")}
                   className={cn(
                     tabBase,
-                    active === "util_by_organization" ? tabActive : tabInactive
+                    active === "util_by_organization" ? tabActive : tabInactive,
                   )}
                 >
                   By Organization
@@ -152,7 +152,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_provider")}
                   className={cn(
                     tabBase,
-                    active === "util_by_provider" ? tabActive : tabInactive
+                    active === "util_by_provider" ? tabActive : tabInactive,
                   )}
                 >
                   By Provider
@@ -163,7 +163,7 @@ export function ReportAside({ active, onActiveChange }: Props) {
                   onClick={() => onActiveChange("util_by_scheme")}
                   className={cn(
                     tabBase,
-                    active === "util_by_scheme" ? tabActive : tabInactive
+                    active === "util_by_scheme" ? tabActive : tabInactive,
                   )}
                 >
                   By Scheme
@@ -179,17 +179,17 @@ export function ReportAside({ active, onActiveChange }: Props) {
             className={cn(
               tabBase,
               active === "overdue_report" ? tabActive : tabInactive,
-              "mt-2"
+              "mt-2",
             )}
           >
             Overdue Report
           </button>
         </div>
 
-        <div className="h-px w-full bg-[#EAECF0]" />
+        {/* <div className="h-px w-full bg-[#EAECF0]" /> */}
 
         {/* Aside bottom */}
-        <div className="w-full flex flex-col justify-between gap-8">
+        {/* <div className="w-full flex flex-col justify-between gap-8">
           <p className="font-hnd text-[14px]/[20px] font-normal text-[#67768C]">
             Customized reports
           </p>
@@ -200,11 +200,11 @@ export function ReportAside({ active, onActiveChange }: Props) {
               No custom report created
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
-      <Button className="w-full h-10 rounded-[10px] bg-primary hover:bg-[#125DBF]">
+      {/* <Button className="w-full h-10 rounded-[10px] bg-primary hover:bg-[#125DBF]">
         Create new Report
-      </Button>
+      </Button> */}
     </aside>
   )
 }

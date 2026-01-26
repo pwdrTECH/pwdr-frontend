@@ -123,23 +123,42 @@ function mapApiLineToRow(item: ApiLine, index: number): UtilServiceRow {
 }
 
 const DONUT_COLORS = ["#1671D9", "#AAB511", "#D5314D", "#EAEAEA"]
+const OTHERS_COLOR = "#EAEAEA"
 
-function mapTopServices(apiTop: ApiTopService[]): TopServiceDatum[] {
-  const list = Array.isArray(apiTop) ? apiTop : []
+function mapTopServices(
+  apiTop: ApiTopService[],
+  summaryTotalClaims?: number,
+): TopServiceDatum[] {
+  const list = Array.isArray(apiTop) ? [...apiTop] : []
 
-  const total = list.reduce((acc, x) => acc + toNumber(x.utilization), 0) || 1
+  // force "Others" to be last
+  list.sort((a, b) => {
+    const ao = String(a.service_name ?? "").toLowerCase() === "others"
+    const bo = String(b.service_name ?? "").toLowerCase() === "others"
+    if (ao === bo) return 0
+    return ao ? 1 : -1
+  })
+
+  const denom =
+    toNumber(summaryTotalClaims ?? 0) ||
+    list.reduce((acc, x) => acc + toNumber(x.utilization), 0) ||
+    1
 
   return list.map((x, i) => {
     const value = toNumber(x.utilization)
-    const percent = Math.round((value / total) * 100)
     const isOthers = String(x.service_name ?? "").toLowerCase() === "others"
+    const percent = Math.round((value / denom) * 100)
+
+    const color = isOthers
+      ? OTHERS_COLOR
+      : (DONUT_COLORS[i] ?? DONUT_COLORS[DONUT_COLORS.length - 1])
 
     return {
       key: String(x.service_name ?? `item-${i}`),
       label: String(x.service_name ?? "—"),
       value,
       percent,
-      color: isOthers ? "#EAEAEA" : DONUT_COLORS[i] ?? "#EAEAEA",
+      color,
       enrolleeCount: typeof x.enrolee_count === "number" ? x.enrolee_count : 0,
     }
   })
@@ -147,7 +166,7 @@ function mapTopServices(apiTop: ApiTopService[]): TopServiceDatum[] {
 
 function mapMonthlyStatistics(
   monthly: ApiMonthlyStat[],
-  top: TopServiceDatum[]
+  top: TopServiceDatum[],
 ): MonthlyServiceCostPoint[] {
   if (!Array.isArray(monthly) || monthly.length === 0) return []
 
@@ -214,7 +233,7 @@ export function UtilizationByServiceView() {
       scheme: filters.scheme === "all" ? "" : filters.scheme,
       plan: filters.plan === "all" ? "" : filters.plan,
     }),
-    [page, startDate, endDate, filters]
+    [page, startDate, endDate, filters],
   )
 
   const utilQuery = useUtilizationByServices(apiFilters)
@@ -223,17 +242,17 @@ export function UtilizationByServiceView() {
   const summary: ApiSummary | undefined = utilQuery.data?.data?.summary
   const apiTopServices: ApiTopService[] =
     utilQuery.data?.data?.top_services ?? []
-  const top = React.useMemo(
-    () => mapTopServices(apiTopServices),
-    [apiTopServices]
-  )
 
+  const top = React.useMemo(
+    () => mapTopServices(apiTopServices, summary?.total_claims_amount),
+    [apiTopServices, summary?.total_claims_amount],
+  )
   const apiMonthlyStats: ApiMonthlyStat[] =
     (utilQuery.data?.data as any)?.monthly_statistics ?? []
 
   const monthly = React.useMemo(
     () => mapMonthlyStatistics(apiMonthlyStats, top),
-    [apiMonthlyStats, top]
+    [apiMonthlyStats, top],
   )
   const apiList: ApiLine[] = React.useMemo(() => {
     const list = utilQuery.data?.data?.line_listing
@@ -252,14 +271,14 @@ export function UtilizationByServiceView() {
         [r.service, r.enrolleeName, r.requestId, r.provider, r.location]
           .join(" ")
           .toLowerCase()
-          .includes(s)
+          .includes(s),
       )
     }
 
     // client-side cost range filter (API currently doesn’t support it)
     if (filters.costRange !== "all") {
       mapped = mapped.filter((r: any) =>
-        inCostRange(toNumber(r.cost ?? 0), filters.costRange)
+        inCostRange(toNumber(r.cost ?? 0), filters.costRange),
       )
     }
 
@@ -307,7 +326,7 @@ export function UtilizationByServiceView() {
           summary
             ? {
                 total_number_of_services: toNumber(
-                  summary.total_number_of_services
+                  summary.total_number_of_services,
                 ),
                 total_claims_amount: toNumber(summary.total_claims_amount),
                 average_service_cost: toNumber(summary.average_service_cost),
